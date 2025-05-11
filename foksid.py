@@ -1,9 +1,10 @@
 import telebot
 from googleapiclient.discovery import build
 
-# === Настройки ===
-BOT_TOKEN = 'ВСТАВЬ_ТОКЕН_БОТА'  # Получить можно у @BotFather
-YOUTUBE_API_KEY = 'ВСТАВЬ_ТВОЙ_YOUTUBE_API_КЛЮЧ'
+import os
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 CHANNEL_ID = 'UCGS02-NLVxwYHwqUx7IFr3g'  # ID твоего канала
 
 # === Инициализация бота и YouTube API ===
