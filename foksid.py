@@ -31,7 +31,7 @@ def search_videos(keyword):
             title = item['snippet']['title']
             if keyword.lower() in title.lower():
                 video_id = item['id']['videoId']
-                url = f"https://youtube.com/watch?v= {video_id}"
+                url = f"https://youtube.com/watch?v={video_id}"
                 result.append({'title': title, 'url': url})
 
         next_page_token = response.get('nextPageToken')
