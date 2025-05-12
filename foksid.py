@@ -1,17 +1,35 @@
 import telebot
 from googleapiclient.discovery import build
-
 import os
+import time
 
+# === Настройки бота и YouTube API ===
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
-CHANNEL_ID = 'UCGS02-NLVxwYHwqUx7IFr3g'  # ID твоего канала
+CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # ID твоего канала
 
 # === Инициализация бота и YouTube API ===
 bot = telebot.TeleBot(BOT_TOKEN)
 youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
 
-# === Функция поиска видео на канале по ключевому слову ===
+# === Проверка, доступно ли видео ===
+def get_valid_video(video_id):
+    try:
+        request = youtube.videos().list(
+            part='status',
+            id=video_id
+        )
+        response = request.execute()
+        if response['items']:
+            status = response['items'][0]['status']['privacyStatus']
+            if status == 'public':
+                return True
+    except Exception as e:
+        print(f"[Ошибка] Не удалось проверить видео {video_id}: {e}")
+    return False
+
+
+# === Поиск видео по ключевому слову на канале ===
 def search_videos(keyword):
     result = []
     next_page_token = None
@@ -29,10 +47,13 @@ def search_videos(keyword):
 
         for item in response.get('items', []):
             title = item['snippet']['title']
+            video_id = item['id']['videoId']
             if keyword.lower() in title.lower():
-                video_id = item['id']['videoId']
-                url = f"https://youtube.com/watch?v={video_id}"
-                result.append({'title': title, 'url': url})
+                if get_valid_video(video_id):  # Проверяем, доступно ли видео
+                    url = f"https://youtube.com/watch?v={video_id}"
+                    result.append({'title': title, 'url': url})
+                else:
+                    print(f"[Инфо] Пропущено недоступное видео: {video_id}")
 
         next_page_token = response.get('nextPageToken')
         if not next_page_token:
@@ -40,28 +61,33 @@ def search_videos(keyword):
 
     return result
 
-# === Обработка сообщений ===
-@bot.message_handler(func=lambda m: '@FoksidBot' in m.text)
-def handle_mention(message):
-    text = message.text
 
-    # Убираем "@FoksidBot" из текста и обрезаем лишние пробелы
-    query = text.replace('@FoksidBot', '').strip()
+# === Обработка любого текстового сообщения ===
+@bot.message_handler(content_types=['text'])
+def handle_text(message):
+    text = message.text.strip().lower()
 
-    if not query:
-        bot.reply_to(message, "Напиши после @FoksidBot, о чём тебе нужно видео. Например:\n\"@FoksidBot как делать рестрикторы\"")
+    if len(text) < 3:
+        bot.reply_to(message, "Введите минимум 3 символа для поиска.")
         return
 
-    bot.send_message(message.chat.id, f"Ищу видео по запросу: \"{query}\"...")
+    bot.send_message(message.chat.id, f"Ищу видео по запросу: \"{text}\"...")
 
-    videos = search_videos(query)
+    videos = search_videos(text)
 
     if videos:
         for video in videos:
-            bot.send_message(message.chat.id, f"🎥 {video['title']}\n{video['url']}")
+            bot.send_message(message.chat.id, f"{video['title']}\n{video['url']}")
     else:
-        bot.send_message(message.chat.id, f"Видео по запросу \"{query}\" не найдены.")
+        bot.send_message(message.chat.id, f"Видео по запросу \"{text}\" не найдены.")
 
-# === Запуск бота ===
-print("Бот запущен...")
-bot.polling(none_stop=True)
+
+# === Перезапуск бота при ошибках ===
+if __name__ == "__main__":
+    print("Бот запущен...")
+    while True:
+        try:
+            bot.polling(none_stop=True)
+        except Exception as e:
+            print(f"[Ошибка] {e}. Перезапуск бота через 15 секунд...")
+            time.sleep(15)
