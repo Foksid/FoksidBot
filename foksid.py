@@ -2,15 +2,24 @@ import telebot
 from googleapiclient.discovery import build
 import os
 import time
+import pymorphy2
 
 # === Настройки бота и YouTube API ===
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
-CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # ID твоего канала
+CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # Замените на ID вашего канала
 
 # === Инициализация бота и YouTube API ===
 bot = telebot.TeleBot(BOT_TOKEN)
 youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
+
+# === Морфологический анализатор ===
+morph = pymorphy2.MorphAnalyzer()
+
+def lemmatize(text):
+    """Приведение слов к начальной форме"""
+    words = text.split()
+    return set(morph.parse(word)[0].normal_form for word in words)
 
 # === Проверка, доступно ли видео ===
 def get_valid_video(video_id):
@@ -33,6 +42,7 @@ def get_valid_video(video_id):
 def search_videos(keyword):
     result = []
     next_page_token = None
+    keyword_lemmas = lemmatize(keyword.lower())
 
     while len(result) < 10:  # максимум 10 результатов
         request = youtube.search().list(
@@ -48,7 +58,11 @@ def search_videos(keyword):
         for item in response.get('items', []):
             title = item['snippet']['title']
             video_id = item['id']['videoId']
-            if keyword.lower() in title.lower():
+
+            title_lemmas = lemmatize(title.lower())
+
+            # Если есть пересечение по леммам
+            if keyword_lemmas & title_lemmas:
                 if get_valid_video(video_id):  # Проверяем, доступно ли видео
                     url = f"https://youtube.com/watch?v={video_id}"
                     result.append({'title': title, 'url': url})
@@ -62,7 +76,7 @@ def search_videos(keyword):
     return result
 
 
-# === Обработка любого текстового сообщения ===
+# === Обработка любого текстового сообщения ===   
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
     text = message.text.strip().lower()
