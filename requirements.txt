@@ -1,2 +1,4 @@
 pyTelegramBotAPI
 google-api-python-client
+pymorphy2
+pymorphy2[dicts]
