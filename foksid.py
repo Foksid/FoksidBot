@@ -88,7 +88,7 @@ def handle_text(message):
             bot.send_message(message.chat.id, f"Видео по запросу \"{text}\" не найдены.")
 
 # === Отправка приветственного сообщения как комментария под постом канала ===
-WELCOME_MESSAGE = "Гайды https://t.me/stalker_soc_moding/57"    
+WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules"    
 
 @bot.channel_post_handler(func=lambda post: True)
 def handle_new_channel_post(channel_post):
