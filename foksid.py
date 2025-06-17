@@ -62,7 +62,13 @@ def search_videos(keyword):
     return result
 
 
-# === Обработка любого текстового сообщения ===
+# === Команды /start и /help === 
+@bot.message_handler(commands=['start', 'help'])
+def send_welcome(message):
+    bot.reply_to(message, "Привет! Напишите ключевое слово для поиска видео на моем YouTube-канале.")
+
+
+# === Обработка любого текстового сообщения === 
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
     text = message.text.strip().lower()
@@ -80,6 +86,28 @@ def handle_text(message):
             bot.send_message(message.chat.id, f"{video['title']}\n{video['url']}")
     else:
         bot.send_message(message.chat.id, f"Видео по запросу \"{text}\" не найдены.")
+
+
+# === Отправка первого сообщения в обсуждениях канала ===
+WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
+
+def get_discussion_chat_id(channel_post):
+    """Получаем чат обсуждений из поста"""
+    if channel_post.forward_from_chat:
+        return channel_post.forward_from_chat.id
+    elif channel_post.reply_to_message and hasattr(channel_post.reply_to_message, 'reply_to_story_id'):
+        return channel_post.reply_to_message.reply_to_story_id
+    return None
+
+@bot.channel_post_handler(func=lambda post: True)
+def handle_new_channel_post(channel_post):
+    chat_id = get_discussion_chat_id(channel_post)
+    if chat_id:
+        try:
+            bot.send_message(chat_id, WELCOME_MESSAGE, reply_to_message_id=channel_post.message_id)
+            print(f"[Успех] Сообщение отправлено в обсуждение поста: {channel_post.message_id}")
+        except Exception as e:
+            print(f"[Ошибка] Не удалось отправить сообщение в обсуждение: {e}")
 
 
 # === Перезапуск бота при ошибках ===
