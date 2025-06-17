@@ -17,7 +17,6 @@ youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
 WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
 
 # === Обработчик новых постов в канале ===
-# === Обработчик новых постов в канале ===
 @bot.message_handler(func=lambda m: m.chat.type == 'channel', content_types=['text', 'photo', 'video'])
 def handle_new_channel_post(message):
     try:
@@ -26,7 +25,7 @@ def handle_new_channel_post(message):
 
         print(f"[Инфо] Новый пост в канале {chat_id}, ID: {post_id}")
 
-        # Отправляем сообщение в группу обсуждений как ответ на пост
+        # === Отправляем сообщение в группу обсуждений как ответ на пост ===
         bot.send_message(
             chat_id=DISCUSSION_CHAT_ID,
             text=WELCOME_MESSAGE,
