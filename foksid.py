@@ -3,6 +3,16 @@ from googleapiclient.discovery import build
 import os
 import time
 
+# Запоминаем время запуска
+START_TIME = time.time()
+
+...
+
+# В обработчике:
+if channel_post.date < START_TIME:
+    print(f"[Инфо] Это старый пост (до запуска), пропускаю.")
+    return
+
 # === Настройки бота и YouTube API ===
 BOT_TOKEN = os.getenv("BOT_TOKEN")  # или '1234567890:ABCdefGHIjklmnoPQRStuv'
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")  # или 'AIza...'
@@ -91,6 +101,9 @@ def handle_text(message):
 # === Приветственное сообщение под постом канала ===
 WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
 
+# === Хранилище уже обработанных постов ===
+processed_posts = set()
+
 # === Обработчик новых постов в канале ===
 @bot.channel_post_handler(func=lambda post: True)
 def handle_new_channel_post(channel_post):
@@ -102,6 +115,11 @@ def handle_new_channel_post(channel_post):
         # Получаем ID поста
         post_id = channel_post.message_id
 
+        # Проверяем, обрабатывали ли мы его уже
+        if post_id in processed_posts:
+            print(f"[Инфо] Пост {post_id} уже обработан, пропускаю.")
+            return
+
         print(f"[Инфо] Новый пост в канале, ID: {post_id}")
 
         # === Отправляем сообщение в группу обсуждений как ответ на пост ===
@@ -110,6 +128,9 @@ def handle_new_channel_post(channel_post):
             text=WELCOME_MESSAGE,
             reply_to_message_id=post_id
         )
+
+        # Добавляем в список обработанных
+        processed_posts.add(post_id)
 
         print(f"[Успех] Сообщение отправлено как комментарий к посту {post_id}")
 
