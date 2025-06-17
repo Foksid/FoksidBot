@@ -7,7 +7,7 @@ import time
 BOT_TOKEN = os.getenv("BOT_TOKEN")  # или '1234567890:ABCdefGHIjklmnoPQRStuv'
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")  # или 'AIza...'
 CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # Заменить на ID своего канала
-DISCUSSION_CHAT_ID = "-1002672416624"  # ID группы обсуждений (публичной!)
+DISCUSSION_CHAT_ID = "-1002859600907"  # Числовой ID группы обсуждений (публичной!)
 
 # === Инициализация бота и YouTube API ===
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -67,7 +67,7 @@ def search_videos(keyword):
 
     return result
 
-# === Обработка текстовых сообщений ТОЛЬКО в ЛС ===      
+# === Обработка текстовых сообщений ТОЛЬКО в ЛС ===         
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
     # Обрабатываем только личные сообщения
@@ -88,33 +88,34 @@ def handle_text(message):
         else:
             bot.send_message(message.chat.id, f"Видео по запросу \"{text}\" не найдены.")
 
-# === Отправка приветственного сообщения как комментария под постом канала ===
-WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules"    
+# === Приветственное сообщение под постом канала ===
+WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
 
 # === Обработчик новых постов в канале ===
 @bot.channel_post_handler(func=lambda post: True)
 def handle_new_channel_post(channel_post):
     try:
+        # Проверяем, что это пост из канала
         if channel_post.chat.type != 'channel':
             return
 
+        # Получаем ID поста
         post_id = channel_post.message_id
-        chat_id = channel_post.chat.id
 
-        print(f"[Инфо] Новый пост в канале {chat_id}, ID поста: {post_id}")
+        print(f"[Инфо] Новый пост в канале, ID: {post_id}")
 
         # === Отправляем сообщение в группу обсуждений как ответ на пост ===
         bot.send_message(
             chat_id=DISCUSSION_CHAT_ID,
             text=WELCOME_MESSAGE,
-            reply_to_message_id=post_id  # Ответ именно на этот пост
+            reply_to_message_id=post_id
         )
 
-        print(f"[Успех] Сообщение отправлено как комментарий к посту {post_id} в группе {DISCUSSION_CHAT_ID}")
+        print(f"[Успех] Сообщение отправлено как комментарий к посту {post_id}")
 
     except Exception as e:
-        print(f"[Ошибка] Не удалось отправить комментарий: {e}")
-        
+        print(f"[Ошибка] Не удалось обработать пост: {e}")
+
 # === Перезапуск бота при ошибках ===
 if __name__ == "__main__":
     print("Бот запущен...")
