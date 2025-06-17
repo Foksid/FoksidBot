@@ -93,19 +93,21 @@ WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами 
 @bot.channel_post_handler(func=lambda post: True)
 def handle_new_channel_post(channel_post):
     try:
-        # Проверяем, что это пост из канала
-        if channel_post.chat.type in ['channel']:
-            chat_id = channel_post.chat.id
-            post_id = channel_post.message_id  # ID поста, на который мы отвечаем
+        # Убеждаемся, что это пост из канала
+        if channel_post.chat.type != 'channel':
+            return
 
-            bot.send_message(
-                chat_id,
-                WELCOME_MESSAGE,
-                reply_to_message_id=post_id  # Отвечаем именно под этим постом
-            )
-            print(f"[Успех] Сообщение отправлено под постом: {post_id}")
-        else:
-            print("[Инфо] Это не пост из канала.")
+        chat_id = channel_post.chat.id
+        post_id = channel_post.message_id
+
+        # Отправляем сообщение как ответ под постом
+        bot.send_message(
+            chat_id,
+            WELCOME_MESSAGE,
+            reply_to_message_id=post_id  # Это делает сообщение как будто нажали "Ответить"
+        )
+        print(f"[Успех] Сообщение отправлено под постом: {post_id}")
+
     except Exception as e:
         print(f"[Ошибка] Не удалось отправить сообщение под постом: {e}")
 
