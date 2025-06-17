@@ -87,7 +87,7 @@ def handle_text(message):
         else:
             bot.send_message(message.chat.id, f"Видео по запросу \"{text}\" не найдены.")
 
-# === Отправка приветственного сообщения под постом канала ===
+# === Отправка приветственного сообщения в чат обсуждений от имени бота ===
 WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
 
 @bot.channel_post_handler(func=lambda post: True)
@@ -98,19 +98,27 @@ def handle_new_channel_post(channel_post):
             return
 
         # Получаем ID поста и ID темы обсуждения
-        chat_id = channel_post.chat.id
         post_id = channel_post.message_id
+        chat_id = channel_post.chat.id
 
-        # Отправляем сообщение как ответ под постом
+        # Проверяем, есть ли у поста обсуждение
+        if not hasattr(channel_post, 'message_thread_id'):
+            print("[Инфо] У этого поста нет обсуждения.")
+            return
+
+        thread_id = channel_post.message_thread_id
+
+        # Отправляем сообщение в чат обсуждений от имени бота
         bot.send_message(
-            chat_id,
-            WELCOME_MESSAGE,
-            reply_to_message_id=post_id  # Это заставляет Telegram показать его как ответ
+            chat_id=chat_id,
+            text=WELCOME_MESSAGE,
+            message_thread_id=thread_id
         )
-        print(f"[Успех] Сообщение отправлено под постом: {post_id}")
+
+        print(f"[Успех] Сообщение отправлено в обсуждение поста {post_id} от имени бота")
 
     except Exception as e:
-        print(f"[Ошибка] Не удалось отправить сообщение под постом: {e}")
+        print(f"[Ошибка] Не удалось отправить сообщение в обсуждение: {e}")
 
 # === Перезапуск бота при ошибках ===
 if __name__ == "__main__":
@@ -120,4 +128,4 @@ if __name__ == "__main__":
             bot.polling(none_stop=True)
         except Exception as e:
             print(f"[Ошибка] {e}. Перезапуск бота через 15 секунд...")
-            time.sleep(15)
+            time.sleep(15
