@@ -93,10 +93,11 @@ WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами 
 @bot.channel_post_handler(func=lambda post: True)
 def handle_new_channel_post(channel_post):
     try:
-        # Убеждаемся, что это пост из канала
+        # Проверяем, что это пост из канала
         if channel_post.chat.type != 'channel':
             return
 
+        # Получаем ID поста и ID темы обсуждения
         chat_id = channel_post.chat.id
         post_id = channel_post.message_id
 
@@ -104,7 +105,7 @@ def handle_new_channel_post(channel_post):
         bot.send_message(
             chat_id,
             WELCOME_MESSAGE,
-            reply_to_message_id=post_id  # Это делает сообщение как будто нажали "Ответить"
+            reply_to_message_id=post_id  # Это заставляет Telegram показать его как ответ
         )
         print(f"[Успех] Сообщение отправлено под постом: {post_id}")
 
