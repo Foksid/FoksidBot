@@ -17,7 +17,7 @@ bot = telebot.TeleBot(BOT_TOKEN)
 youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
 
 
-# === Получаем ID связанного поста в группе обсуждений ===
+# === Получаем ID первого сообщения в группе обсуждений ===
 def get_discussion_post_id(channel_chat_id):
     try:
         chat_info = bot.get_chat(channel_chat_id)
@@ -29,15 +29,10 @@ def get_discussion_post_id(channel_chat_id):
 
         print(f"[INFO] Группа обсуждений: {linked_chat_id}")
 
-        messages = bot.get_chat_history(chat_id=linked_chat_id, limit=5)
-
-        for msg in messages:
-            if msg.forward_from_chat and msg.forward_from_chat.id == bot.get_chat(channel_chat_id).id:
-                print(f"[INFO] Найден новый пост в группе обсуждений: {msg.message_id}")
-                return msg.message_id
-
-        print("[INFO] Не удалось найти связанный пост в группе обсуждений")
-        return None
+        # Получаем последнее сообщение в группе обсуждений
+        msg = bot.get_message(chat_id=linked_chat_id, message_id=1)
+        print(f"[INFO] Первое сообщение в группе: {msg.message_id}")
+        return msg.message_id
 
     except Exception as e:
         print(f"[Ошибка при получении ID поста из группы]: {e}")
@@ -137,6 +132,17 @@ def handle_text(message):
                 bot.send_message(message.chat.id, f"{video['title']}\n{video['url']}")
         else:
             bot.send_message(message.chat.id, f"Видео по запросу \"{text}\" не найдены.")
+
+
+# === Тестовая команда для проверки отправки в группу ===
+@bot.message_handler(commands=['testcomment'])
+def test_comment(message):
+    if message.chat.type == 'private':
+        discussion_post_id = get_discussion_post_id(CHANNEL_CHAT_ID)
+        if discussion_post_id:
+            send_welcome_to_discussion(discussion_post_id)
+        else:
+            bot.reply_to(message, "Не удалось получить ID поста")
 
 
 # === Основной цикл работы бота ===
