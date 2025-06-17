@@ -23,11 +23,16 @@ youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
 # === Получаем последний пост из канала ===
 def get_latest_post():
     try:
-        messages = bot.get_chat_history(chat_id=CHANNEL_CHAT_ID, limit=1)
-        for message in messages:
-            return message.message_id
+        # Получаем информацию о канале
+        chat_info = bot.get_chat(CHANNEL_CHAT_ID)
+        print(f"[DEBUG] Инфо о канале: {chat_info}")
+
+        # Получаем самый свежий пост
+        message = bot.get_message(chat_id=CHANNEL_CHAT_ID, message_id=chat_info.last_message_id)
+        print(f"[DEBUG] Последнее сообщение: {message.message_id}")
+        return message.message_id
     except Exception as e:
-        print(f"[Ошибка] Не удалось получить последние посты канала: {e}")
+        print(f"[Ошибка] Не удалось получить последние посты: {e}")
         return None
 
 
