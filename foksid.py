@@ -2,77 +2,24 @@ import telebot
 from googleapiclient.discovery import build
 import os
 import time
-import requests
+
 # === Настройки бота и YouTube API ===
 BOT_TOKEN = os.getenv("BOT_TOKEN")  # или '1234567890:ABCdefGHIjklmnoPQRStuv'
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")  # или 'AIza...'
-CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # ID твоего YouTube-канала
-CHANNEL_CHAT_ID = "-1002672416624"  # username канала или -100... ID
-
-# === Приветственное сообщение под постом канала ===
-WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
+CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # Заменить на ID своего канала
+DISCUSSION_CHAT_ID = "-1002859600907"  # Числовой ID группы обсуждений (публичной!)
 
 # === Инициализация бота и YouTube API ===
 bot = telebot.TeleBot(BOT_TOKEN)
 youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
 
+# === Команда /start и /help ===
+@bot.message_handler(commands=['start', 'help'])
+def send_welcome(message):
+    if message.chat.type == 'private':
+        bot.reply_to(message, "Привет! Напишите ключевое слово для поиска видео на моем YouTube-канале.")
 
-# === Получаем ID первого сообщения в группе обсуждений ===
-def get_discussion_post_id(channel_chat_id):
-    try:
-        chat_info = bot.get_chat(channel_chat_id)
-        linked_chat_id = chat_info.linked_chat_id
-
-        if not linked_chat_id:
-            print("[Ошибка] У канала не установлена группа обсуждений.")
-            return None
-
-        print(f"[INFO] Группа обсуждений: {linked_chat_id}")
-
-        # Получаем первое сообщение в группе обсуждений через Telegram API
-        url = f"https://api.telegram.org/bot{BOT_TOKEN}/getMessages" 
-        response = requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getChat",  params={"chat_id": linked_chat_id})
-        data = response.json()
-        
-        # Получаем последнее сообщение
-        response = requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getChatHistory",  params={
-            "chat_id": linked_chat_id,
-            "limit": 1
-        })
-        data = response.json()
-
-        if data['ok'] and len(data['result']['messages']) > 0:
-            msg_id = data['result']['messages'][0]['message_id']
-            print(f"[INFO] Найден новый пост в группе: {msg_id}")
-            return msg_id
-        else:
-            print("[INFO] Не удалось получить сообщения из группы")
-            return None
-
-    except Exception as e:
-        print(f"[Ошибка при получении ID поста из группы]: {e}")
-        return None
-
-
-# === Функция отправки сообщения в обсуждение поста ===
-def send_welcome_to_discussion(post_id):
-    try:
-        chat_info = bot.get_chat(CHANNEL_CHAT_ID)
-        linked_chat_id = chat_info.linked_chat_id
-
-        bot.send_message(
-            chat_id=linked_chat_id,
-            text=WELCOME_MESSAGE,
-            reply_to_message_id=post_id,
-            disable_web_page_preview=True
-        )
-        print(f"[Успех] Сообщение отправлено как комментарий к посту {post_id}")
-
-    except Exception as e:
-        print(f"[Ошибка] Не удалось отправить сообщение к посту {post_id}: {e}")
-
-
-# === Поиск видео по ключевому слову на канале ===
+# === Проверка, доступно ли видео ===
 def get_valid_video(video_id):
     try:
         request = youtube.videos().list(
@@ -88,7 +35,7 @@ def get_valid_video(video_id):
         print(f"[Ошибка] Не удалось проверить видео {video_id}: {e}")
     return False
 
-
+# === Поиск видео по ключевому слову на канале ===
 def search_videos(keyword):
     result = []
     next_page_token = None
@@ -109,28 +56,10 @@ def search_videos(keyword):
             video_id = item['id']['videoId']
             if keyword.lower() in title.lower():
                 if get_valid_video(video_id):  # Проверяем, доступно ли видео
-                    url = f"https://youtube.com/watch?v={video_id}"
-                    result.append({'title': title, 'url': url})
-                else:
-                    print(f"[Инфо] Пропущено недоступное видео: {video_id}")
-
-        next_page_token = response.get('nextPageToken')
-        if not next_page_token:
-            break
-
-    return result
-
-
-# === Команды /start и /help === 
-@bot.message_handler(commands=['start', 'help'])
-def send_welcome(message):
-    if message.chat.type == 'private':
-        bot.reply_to(message, "Привет! Напишите ключевое слово для поиска видео на моем YouTube-канале.")
-
-
-# === Обработка текстовых сообщений ТОЛЬКО в ЛС ===
+                    url = f"https://youtube.com/watch?v={video_id}" result.append({'title': title, 'url': url}) else: print(f"[Инфо] Пропущено недоступное видео: {video_id}") next_page_token = response.get('nextPageToken') if not next_page_token: break return result # === Обработка текстовых сообщений ТОЛЬКО в ЛС ===
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
+    # Обрабатываем только личные сообщения
     if message.chat.type == 'private':
         text = message.text.strip().lower()
 
@@ -148,35 +77,40 @@ def handle_text(message):
         else:
             bot.send_message(message.chat.id, f"Видео по запросу \"{text}\" не найдены.")
 
+# === Приветственное сообщение под постом канала ===
+WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules"   
 
-# === Тестовая команда для проверки отправки в группу ===
-@bot.message_handler(commands=['testcomment'])
-def test_comment(message):
-    if message.chat.type == 'private':
-        discussion_post_id = get_discussion_post_id(CHANNEL_CHAT_ID)
-        if discussion_post_id:
-            send_welcome_to_discussion(discussion_post_id)
-        else:
-            bot.reply_to(message, "Не удалось получить ID поста")
+# === Обработчик новых постов в канале ===
+@bot.channel_post_handler(func=lambda post: True)
+def handle_new_channel_post(channel_post):
+    try:
+        # Проверяем, что это пост из канала
+        if channel_post.chat.type != 'channel':
+            return
 
+        # Получаем ID поста
+        post_id = channel_post.message_id
 
-# === Основной цикл работы бота ===
+        print(f"[Инфо] Новый пост в канале, ID: {post_id}")
+
+        # === Отправляем сообщение в группу обсуждений как ответ на пост ===
+        bot.send_message(
+            chat_id=DISCUSSION_CHAT_ID,
+            text=WELCOME_MESSAGE,
+            reply_to_message_id=post_id
+        )
+
+        print(f"[Успех] Сообщение отправлено как комментарий к посту {post_id}")
+
+    except Exception as e:
+        print(f"[Ошибка] Не удалось обработать пост: {e}")
+
+# === Перезапуск бота при ошибках ===
 if __name__ == "__main__":
     print("Бот запущен...")
-
-    last_post_id = None
-
     while True:
         try:
-            discussion_post_id = get_discussion_post_id(CHANNEL_CHAT_ID)
-
-            if discussion_post_id and discussion_post_id != last_post_id:
-                print(f"[INFO] Обнаружен новый пост в группе: {discussion_post_id}")
-                send_welcome_to_discussion(discussion_post_id)
-                last_post_id = discussion_post_id
-
-            bot.polling(none_stop=True, timeout=60)
-
+            bot.polling(none_stop=True)
         except Exception as e:
-            print(f"[Ошибка] {e}. Перезапуск через 15 секунд...")
+            print(f"[Ошибка] {e}. Перезапуск бота через 15 секунд...")
             time.sleep(15)
