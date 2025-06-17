@@ -7,7 +7,7 @@ import time
 BOT_TOKEN = os.getenv("BOT_TOKEN")  # или '1234567890:ABCdefGHIjklmnoPQRStuv'
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")  # или 'AIza...'
 CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # Заменить на ID своего канала
-DISCUSSION_CHAT_ID = "-1002859600907"  # Числовой ID группы обсуждений (публичной!)
+#DISCUSSION_CHAT_ID = "-1002859600907"  # Числовой ID группы обсуждений (публичной!)
 
 # === Инициализация бота и YouTube API ===
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -20,25 +20,30 @@ WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами 
 def get_chat_id(message):
     print(f"[Инфо] Chat ID этой группы: {message.chat.id}")
     bot.reply_to(message, f"Chat ID: `{message.chat.id}`", parse_mode="Markdown")
+# === Настройка для группы обсуждений ===
+DISCUSSION_CHAT_ID = "-1002859600907"  # заменить на ваш chat_id
 
-# === Обработчик новых постов в канале ===
-
-@bot.message_handler(func=lambda m: m.chat.type == 'channel', content_types=['text', 'photo', 'video'])
-def handle_new_channel_post(message):
+# === Получаем последние посты из группы обсуждений ===
+def check_new_posts():
     try:
-        chat_id = message.chat.id
-        post_id = message.message_id
+        messages = bot.get_chat_history(chat_id=DISCUSSION_CHAT_ID, limit=5)
+        for message in messages:
+            if message.message_id and not message.from_user.is_bot:  # если это пользовательский пост
+                handle_new_post(message.message_id)
+    except Exception as e:
+        print(f"[Ошибка] Не удалось получить историю чата: {e}")
 
-        print(f"[Инфо] Новый пост в канале {chat_id}, ID: {post_id}")
+# === Функция ответа на новый пост ===
+def handle_new_post(post_id):
+    try:
+        WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
 
-        # === Отправляем сообщение в группу обсуждений как ответ на пост ===
         bot.send_message(
             chat_id=DISCUSSION_CHAT_ID,
             text=WELCOME_MESSAGE,
             reply_to_message_id=post_id,
             disable_web_page_preview=True
         )
-
         print(f"[Успех] Сообщение отправлено как комментарий к посту {post_id}")
 
     except Exception as e:
