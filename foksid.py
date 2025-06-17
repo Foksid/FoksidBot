@@ -103,7 +103,7 @@ def handle_new_channel_post(channel_post):
         telegram_channel_id = channel_post.chat.id
 
         # Здесь можно указать числовой ID вашего Telegram-канала
-        MY_TELEGRAM_CHANNEL_ID = -1002672416624  # Замените на свой
+        MY_TELEGRAM_CHANNEL_ID = "-1002672416624"  # Замените на свой
 
         # Проверяем, совпадает ли канал с нашим
         if telegram_channel_id != MY_TELEGRAM_CHANNEL_ID:
