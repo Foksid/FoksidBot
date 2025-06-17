@@ -17,6 +17,20 @@ youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
 WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
 
 # === Обработчик новых постов в канале ===
+@bot.message_handler(commands=['test'])
+def test_send_in_discussion(message):
+    try:
+        bot.send_message(
+            chat_id=DISCUSSION_CHAT_ID,
+            text="🤖 Это тестовое сообщение от бота!"
+        )
+        print("[Успех] Тестовое сообщение отправлено!")
+        bot.reply_to(message, "✅ Тестовое сообщение отправлено в группу обсуждений.")
+    except Exception as e:
+        error_msg = f"[Ошибка при тесте]: {e}"
+        print(error_msg)
+        bot.reply_to(message, error_msg)
+
 @bot.message_handler(func=lambda m: m.chat.type == 'channel', content_types=['text', 'photo', 'video'])
 def handle_new_channel_post(message):
     try:
