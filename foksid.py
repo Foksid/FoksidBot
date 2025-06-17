@@ -2,14 +2,12 @@ import telebot
 from googleapiclient.discovery import build
 import os
 import time
-import json
 
 # === Настройки бота и YouTube API ===
 BOT_TOKEN = os.getenv("BOT_TOKEN")  # или '1234567890:ABCdefGHIjklmnoPQRStuv'
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")  # или 'AIza...'
 CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # Заменить на ID своего канала
 DISCUSSION_CHAT_ID = "-1002859600907"  # Числовой ID группы обсуждений (публичной!)
-POSTS_FILE = "processed_posts.json"  # Файл для сохранения обработанных постов
 
 # === Инициализация бота и YouTube API ===
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -90,37 +88,19 @@ def handle_text(message):
         else:
             bot.send_message(message.chat.id, f"Видео по запросу \"{text}\" не найдены.")
 
-# === Приветственное сообщение под постом ===
+# === Приветственное сообщение под постом канала ===
 WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
-
-# === Хранилище уже обработанных постов с загрузкой из файла ===
-try:
-    with open(POSTS_FILE, "r") as f:
-        processed_posts = set(json.load(f))
-except FileNotFoundError:
-    processed_posts = set()
-
-def save_processed_posts():
-    with open(POSTS_FILE, "w") as f:
-        json.dump(list(processed_posts), f)
 
 # === Обработчик новых постов в канале ===
 @bot.channel_post_handler(func=lambda post: True)
 def handle_new_channel_post(channel_post):
-    print("[DEBUG] Получено событие:", channel_post)  # Диагностический вывод
     try:
-        # Проверяем, что это пост из канала, а не из другой группы или ЛС
+        # Проверяем, что это пост из канала
         if channel_post.chat.type != 'channel':
-            print("[DEBUG] Это не канал")
             return
 
         # Получаем ID поста
         post_id = channel_post.message_id
-
-        # Проверяем, обрабатывали ли мы его уже
-        if post_id in processed_posts:
-            print(f"[Инфо] Пост {post_id} уже обработан, пропускаю.")
-            return
 
         print(f"[Инфо] Новый пост в канале, ID: {post_id}")
 
@@ -130,10 +110,6 @@ def handle_new_channel_post(channel_post):
             text=WELCOME_MESSAGE,
             reply_to_message_id=post_id
         )
-
-        # Добавляем в список обработанных и сохраняем
-        processed_posts.add(post_id)
-        save_processed_posts()
 
         print(f"[Успех] Сообщение отправлено как комментарий к посту {post_id}")
 
