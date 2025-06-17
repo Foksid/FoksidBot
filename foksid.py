@@ -4,7 +4,7 @@ import os
 import time
 
 # === Настройки бота и YouTube API ===
-BOT_TOKEN = os.getenv("BOT_TOKEN")  # или просто укажи напрямую: '1234567890:ABCdefGHIjklmnoPQRStuv'
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # или укажи напрямую: '1234567890:ABCdefGHIjklmnoPQRStuv'
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")  # или 'AIza...'
 CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # Заменить на ID своего канала
 
@@ -87,7 +87,7 @@ def handle_text(message):
         else:
             bot.send_message(message.chat.id, f"Видео по запросу \"{text}\" не найдены.")
 
-# === Отправка приветственного сообщения в чат обсуждений от имени бота ===
+# === Отправка приветственного сообщения как комментария под постом ===
 WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
 
 @bot.channel_post_handler(func=lambda post: True)
@@ -97,28 +97,20 @@ def handle_new_channel_post(channel_post):
         if channel_post.chat.type != 'channel':
             return
 
-        # Получаем ID поста и ID темы обсуждения
-        post_id = channel_post.message_id
         chat_id = channel_post.chat.id
+        post_id = channel_post.message_id
 
-        # Проверяем, есть ли у поста обсуждение
-        if not hasattr(channel_post, 'message_thread_id'):
-            print("[Инфо] У этого поста нет обсуждения.")
-            return
-
-        thread_id = channel_post.message_thread_id
-
-        # === Отправляем сообщение в группу обсуждений от имени бота ===
+        # Отправляем сообщение как ответ под постом
         bot.send_message(
             chat_id=chat_id,
             text=WELCOME_MESSAGE,
-            message_thread_id=thread_id  # Это заставляет Telegram показать его как ответ под постом
+            reply_to_message_id=post_id  # Это делает сообщение как будто нажали "Ответить"
         )
 
-        print(f"[Успех] Сообщение отправлено в обсуждение поста {post_id} от имени бота")
+        print(f"[Успех] Сообщение отправлено как комментарий под постом {post_id}")
 
     except Exception as e:
-        print(f"[Ошибка] Не удалось отправить сообщение в обсуждение: {e}")
+        print(f"[Ошибка] Не удалось отправить комментарий: {e}")
 
 # === Перезапуск бота при ошибках ===
 if __name__ == "__main__":
