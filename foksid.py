@@ -4,10 +4,9 @@ import os
 import time
 
 # === Настройки бота и YouTube API ===
-BOT_TOKEN = os.getenv("BOT_TOKEN")  # или '1234567890:ABCdefGHIjklmnoPQRStuv'
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # или укажи напрямую: '1234567890:ABCdefGHIjklmnoPQRStuv'
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")  # или 'AIza...'
 CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # Заменить на ID своего канала
-DISCUSSION_CHAT_ID = "-1002859600907"  # Числовой ID группы обсуждений (публичной!)
 
 # === Инициализация бота и YouTube API ===
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -56,7 +55,18 @@ def search_videos(keyword):
             video_id = item['id']['videoId']
             if keyword.lower() in title.lower():
                 if get_valid_video(video_id):  # Проверяем, доступно ли видео
-                    url = f"https://youtube.com/watch?v={video_id}" result.append({'title': title, 'url': url}) else: print(f"[Инфо] Пропущено недоступное видео: {video_id}") next_page_token = response.get('nextPageToken') if not next_page_token: break return result # === Обработка текстовых сообщений ТОЛЬКО в ЛС ===
+                    url = f"https://youtube.com/watch?v={video_id}"
+                    result.append({'title': title, 'url': url})
+                else:
+                    print(f"[Инфо] Пропущено недоступное видео: {video_id}")
+
+        next_page_token = response.get('nextPageToken')
+        if not next_page_token:
+            break
+
+    return result
+
+# === Обработка текстовых сообщений ТОЛЬКО в ЛС ===   
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
     # Обрабатываем только личные сообщения
@@ -77,10 +87,9 @@ def handle_text(message):
         else:
             bot.send_message(message.chat.id, f"Видео по запросу \"{text}\" не найдены.")
 
-# === Приветственное сообщение под постом канала ===
-WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules"   
+# === Отправка приветственного сообщения как комментария под постом ===
+WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
 
-# === Обработчик новых постов в канале ===
 @bot.channel_post_handler(func=lambda post: True)
 def handle_new_channel_post(channel_post):
     try:
@@ -88,22 +97,20 @@ def handle_new_channel_post(channel_post):
         if channel_post.chat.type != 'channel':
             return
 
-        # Получаем ID поста
+        chat_id = channel_post.chat.id
         post_id = channel_post.message_id
 
-        print(f"[Инфо] Новый пост в канале, ID: {post_id}")
-
-        # === Отправляем сообщение в группу обсуждений как ответ на пост ===
+        # Отправляем сообщение как ответ под постом
         bot.send_message(
-            chat_id=DISCUSSION_CHAT_ID,
+            chat_id=chat_id,
             text=WELCOME_MESSAGE,
-            reply_to_message_id=post_id
+            reply_to_message_id=post_id  # Это делает сообщение как будто нажали "Ответить"
         )
 
-        print(f"[Успех] Сообщение отправлено как комментарий к посту {post_id}")
+        print(f"[Успех] Сообщение отправлено как комментарий под постом {post_id}")
 
     except Exception as e:
-        print(f"[Ошибка] Не удалось обработать пост: {e}")
+        print(f"[Ошибка] Не удалось отправить комментарий: {e}")
 
 # === Перезапуск бота при ошибках ===
 if __name__ == "__main__":
