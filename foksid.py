@@ -90,14 +90,13 @@ def handle_text(message):
 # === Отправка приветственного сообщения как комментария под постом канала ===
 WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules"    
 
+# === Обработчик новых постов в канале ===
 @bot.channel_post_handler(func=lambda post: True)
 def handle_new_channel_post(channel_post):
     try:
-        # Проверяем, что это пост из канала
         if channel_post.chat.type != 'channel':
             return
 
-        # Получаем ID поста и chat_id
         post_id = channel_post.message_id
         chat_id = channel_post.chat.id
 
