@@ -6,11 +6,17 @@ import time
 # === Настройки бота и YouTube API ===
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
-CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # ID твоего канала
+CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # Заменить на ID своего канала
 
 # === Инициализация бота и YouTube API ===
 bot = telebot.TeleBot(BOT_TOKEN)
 youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
+
+# === Команда /start и /help ===
+@bot.message_handler(commands=['start', 'help'])
+def send_welcome(message):
+    if message.chat.type == 'private':
+        bot.reply_to(message, "Привет! Напишите ключевое слово для поиска видео на моем YouTube-канале.")
 
 # === Проверка, доступно ли видео ===
 def get_valid_video(video_id):
@@ -27,7 +33,6 @@ def get_valid_video(video_id):
     except Exception as e:
         print(f"[Ошибка] Не удалось проверить видео {video_id}: {e}")
     return False
-
 
 # === Поиск видео по ключевому слову на канале ===
 def search_videos(keyword):
@@ -61,32 +66,26 @@ def search_videos(keyword):
 
     return result
 
-
-# === Команды /start и /help === 
-@bot.message_handler(commands=['start', 'help'])
-def send_welcome(message):
-    bot.reply_to(message, "Привет! Напишите ключевое слово для поиска видео на моем YouTube-канале.")
-
-
-# === Обработка любого текстового сообщения === 
+# === Обработка текстовых сообщений ТОЛЬКО в ЛС === 
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
-    text = message.text.strip().lower()
+    # Обрабатываем только личные сообщения
+    if message.chat.type == 'private':
+        text = message.text.strip().lower()
 
-    if len(text) < 3:
-        bot.reply_to(message, "Введите минимум 3 символа для поиска.")
-        return
+        if len(text) < 3:
+            bot.reply_to(message, "Введите минимум 3 символа для поиска.")
+            return
 
-    bot.send_message(message.chat.id, f"Ищу видео по запросу: \"{text}\"...")
+        bot.send_message(message.chat.id, f"Ищу видео по запросу: \"{text}\"...")
 
-    videos = search_videos(text)
+        videos = search_videos(text)
 
-    if videos:
-        for video in videos:
-            bot.send_message(message.chat.id, f"{video['title']}\n{video['url']}")
-    else:
-        bot.send_message(message.chat.id, f"Видео по запросу \"{text}\" не найдены.")
-
+        if videos:
+            for video in videos:
+                bot.send_message(message.chat.id, f"{video['title']}\n{video['url']}")
+        else:
+            bot.send_message(message.chat.id, f"Видео по запросу \"{text}\" не найдены.")
 
 # === Отправка первого сообщения в обсуждениях канала ===
 WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
@@ -108,7 +107,6 @@ def handle_new_channel_post(channel_post):
             print(f"[Успех] Сообщение отправлено в обсуждение поста: {channel_post.message_id}")
         except Exception as e:
             print(f"[Ошибка] Не удалось отправить сообщение в обсуждение: {e}")
-
 
 # === Перезапуск бота при ошибках ===
 if __name__ == "__main__":
