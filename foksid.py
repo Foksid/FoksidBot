@@ -66,7 +66,7 @@ def search_videos(keyword):
 
     return result
 
-# === Обработка текстовых сообщений ТОЛЬКО в ЛС === 
+# === Обработка текстовых сообщений ТОЛЬКО в ЛС ===   
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
     # Обрабатываем только личные сообщения
@@ -87,26 +87,27 @@ def handle_text(message):
         else:
             bot.send_message(message.chat.id, f"Видео по запросу \"{text}\" не найдены.")
 
-# === Отправка первого сообщения в обсуждениях канала ===
+# === Отправка приветственного сообщения под постом канала ===
 WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
-
-def get_discussion_chat_id(channel_post):
-    """Получаем чат обсуждений из поста"""
-    if channel_post.forward_from_chat:
-        return channel_post.forward_from_chat.id
-    elif channel_post.reply_to_message and hasattr(channel_post.reply_to_message, 'reply_to_story_id'):
-        return channel_post.reply_to_message.reply_to_story_id
-    return None
 
 @bot.channel_post_handler(func=lambda post: True)
 def handle_new_channel_post(channel_post):
-    chat_id = get_discussion_chat_id(channel_post)
-    if chat_id:
-        try:
-            bot.send_message(chat_id, WELCOME_MESSAGE, reply_to_message_id=channel_post.message_id)
+    try:
+        # Проверяем, есть ли обсуждение у поста
+        if hasattr(channel_post, 'message_thread_id'):
+            chat_id = channel_post.chat.id
+            thread_id = channel_post.message_thread_id
+
+            bot.send_message(
+                chat_id,
+                WELCOME_MESSAGE,
+                reply_to_message_id=thread_id  # Отвечаем именно в тему этого поста
+            )
             print(f"[Успех] Сообщение отправлено в обсуждение поста: {channel_post.message_id}")
-        except Exception as e:
-            print(f"[Ошибка] Не удалось отправить сообщение в обсуждение: {e}")
+        else:
+            print("[Инфо] У поста нет обсуждения.")
+    except Exception as e:
+        print(f"[Ошибка] Не удалось отправить сообщение в обсуждение: {e}")
 
 # === Перезапуск бота при ошибках ===
 if __name__ == "__main__":
