@@ -13,12 +13,6 @@ DISCUSSION_CHAT_ID = "-1002859600907"  # Числовой ID группы обс
 bot = telebot.TeleBot(BOT_TOKEN)
 youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
 
-# === Время запуска бота — для фильтрации старых событий ===
-START_TIME = time.time()
-
-# === Хранилище уже обработанных постов ===
-processed_posts = set()
-
 # === Команда /start и /help ===
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
@@ -101,35 +95,18 @@ WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами 
 @bot.channel_post_handler(func=lambda post: True)
 def handle_new_channel_post(channel_post):
     try:
-        # Проверяем, что это пост из канала
-        if channel_post.chat.type != 'channel':
+        # Убедиться, что это именно новый пост в канале, а не ответ в группе
+        if channel_post.chat.id != int(CHANNEL_ID):  # Сравниваем ID канала
             return
 
-        # Получаем ID поста и время публикации
         post_id = channel_post.message_id
-        post_time = channel_post.date
-
-        # Игнорируем посты, опубликованные до запуска бота
-        if post_time < START_TIME:
-            print(f"[Инфо] Пост {post_id} был до запуска бота, пропускаю.")
-            return
-
-        # Проверяем, обрабатывали ли мы его уже
-        if post_id in processed_posts:
-            print(f"[Инфо] Пост {post_id} уже обработан, пропускаю.")
-            return
-
         print(f"[Инфо] Новый пост в канале, ID: {post_id}")
 
-        # === Отправляем сообщение в группу обсуждений как ответ на пост ===
         bot.send_message(
             chat_id=DISCUSSION_CHAT_ID,
             text=WELCOME_MESSAGE,
             reply_to_message_id=post_id
         )
-
-        # Добавляем в список обработанных
-        processed_posts.add(post_id)
 
         print(f"[Успех] Сообщение отправлено как комментарий к посту {post_id}")
 
