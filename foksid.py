@@ -7,7 +7,7 @@ import time
 BOT_TOKEN = os.getenv("BOT_TOKEN")  # или '1234567890:ABCdefGHIjklmnoPQRStuv'
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")  # или 'AIza...'
 CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # Заменить на ID своего канала
-
+DISCUSSION_CHAT_ID = "-1002672416624"  # Числовой ID группы обсуждений (публичной!)
 # === Инициализация бота и YouTube API ===
 bot = telebot.TeleBot(BOT_TOKEN)
 youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
@@ -101,18 +101,19 @@ def handle_new_channel_post(channel_post):
         post_id = channel_post.message_id
         chat_id = channel_post.chat.id
 
-        # === Отправляем сообщение как ответ на пост ===
+        print(f"[Инфо] Новый пост в канале {chat_id}, ID поста: {post_id}")
+
+        # === Отправляем сообщение в группу обсуждений как ответ на пост ===
         bot.send_message(
-            chat_id=chat_id,
+            chat_id=DISCUSSION_CHAT_ID,
             text=WELCOME_MESSAGE,
-            reply_to_message_id=post_id  # Это гарантирует, что сообщение будет как комментарий
+            reply_to_message_id=post_id  # Ответ именно на этот пост
         )
 
-        print(f"[Успех] Сообщение отправлено как комментарий к посту {post_id} от имени бота")
+        print(f"[Успех] Сообщение отправлено как комментарий к посту {post_id} в группе {DISCUSSION_CHAT_ID}")
 
     except Exception as e:
         print(f"[Ошибка] Не удалось отправить комментарий: {e}")
-
 # === Перезапуск бота при ошибках ===
 if __name__ == "__main__":
     print("Бот запущен...")
