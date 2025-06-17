@@ -4,16 +4,13 @@ import os
 import time
 
 # === Настройки бота и YouTube API ===
-BOT_TOKEN = "ВАШ_ТОКЕН"  # или используйте os.getenv("BOT_TOKEN")
-YOUTUBE_API_KEY = "ВАШ_YOUTUBE_API_KEY"
-CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # ID вашего канала
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # или '1234567890:ABCdefGHIjklmnoPQRStuv'
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")  # или 'AIza...'
+CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # Заменить на ID своего канала
 
 # === Инициализация бота и YouTube API ===
 bot = telebot.TeleBot(BOT_TOKEN)
 youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
-
-# === Приветствие под постами ===
-WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
 
 # === Команда /start и /help ===
 @bot.message_handler(commands=['start', 'help'])
@@ -69,7 +66,7 @@ def search_videos(keyword):
 
     return result
 
-# === Обработка текстовых сообщений ТОЛЬКО в ЛС ===     
+# === Обработка текстовых сообщений ТОЛЬКО в ЛС ===      
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
     # Обрабатываем только личные сообщения
@@ -90,7 +87,9 @@ def handle_text(message):
         else:
             bot.send_message(message.chat.id, f"Видео по запросу \"{text}\" не найдены.")
 
-# === Отправка приветственного сообщения в обсуждение под постом ===
+# === Отправка приветственного сообщения как комментария под постом канала ===
+WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules"    
+
 @bot.channel_post_handler(func=lambda post: True)
 def handle_new_channel_post(channel_post):
     try:
@@ -98,27 +97,21 @@ def handle_new_channel_post(channel_post):
         if channel_post.chat.type != 'channel':
             return
 
-        chat_id = channel_post.chat.id
+        # Получаем ID поста и chat_id
         post_id = channel_post.message_id
+        chat_id = channel_post.chat.id
 
-        # Проверяем, есть ли тема обсуждения
-        if not hasattr(channel_post, 'message_thread_id'):
-            print("[Инфо] У этого поста нет обсуждения.")
-            return
-
-        thread_id = channel_post.message_thread_id
-
-        # Отправляем сообщение в обсуждение
+        # === Отправляем сообщение как ответ на пост ===
         bot.send_message(
             chat_id=chat_id,
             text=WELCOME_MESSAGE,
-            message_thread_id=thread_id
+            reply_to_message_id=post_id  # Это гарантирует, что сообщение будет как комментарий
         )
 
-        print(f"[Успех] Сообщение отправлено в обсуждение поста {post_id} от имени бота")
+        print(f"[Успех] Сообщение отправлено как комментарий к посту {post_id} от имени бота")
 
     except Exception as e:
-        print(f"[Ошибка] Не удалось отправить сообщение в обсуждение: {e}")
+        print(f"[Ошибка] Не удалось отправить комментарий: {e}")
 
 # === Перезапуск бота при ошибках ===
 if __name__ == "__main__":
