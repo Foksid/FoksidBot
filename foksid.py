@@ -4,8 +4,8 @@ import os
 import time
 
 # === Настройки бота и YouTube API ===
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # или просто укажи напрямую: '1234567890:ABCdefGHIjklmnoPQRStuv'
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")  # или 'AIza...'
 CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # Заменить на ID своего канала
 
 # === Инициализация бота и YouTube API ===
@@ -108,11 +108,11 @@ def handle_new_channel_post(channel_post):
 
         thread_id = channel_post.message_thread_id
 
-        # Отправляем сообщение в чат обсуждений от имени бота
+        # === Отправляем сообщение в группу обсуждений от имени бота ===
         bot.send_message(
             chat_id=chat_id,
             text=WELCOME_MESSAGE,
-            message_thread_id=thread_id
+            message_thread_id=thread_id  # Это заставляет Telegram показать его как ответ под постом
         )
 
         print(f"[Успех] Сообщение отправлено в обсуждение поста {post_id} от имени бота")
@@ -128,4 +128,4 @@ if __name__ == "__main__":
             bot.polling(none_stop=True)
         except Exception as e:
             print(f"[Ошибка] {e}. Перезапуск бота через 15 секунд...")
-            time.sleep(15
+            time.sleep(15)
