@@ -18,18 +18,11 @@ WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами 
 
 # === Обработчик новых постов в канале ===
 @bot.message_handler(commands=['test'])
-def test_send_in_discussion(message):
+def test_message(message):
     try:
-        bot.send_message(
-            chat_id=DISCUSSION_CHAT_ID,
-            text="🤖 Это тестовое сообщение от бота!"
-        )
-        print("[Успех] Тестовое сообщение отправлено!")
-        bot.reply_to(message, "✅ Тестовое сообщение отправлено в группу обсуждений.")
+        bot.reply_to(message, "✅ Бот работает и получил команду /test")
     except Exception as e:
-        error_msg = f"[Ошибка при тесте]: {e}"
-        print(error_msg)
-        bot.reply_to(message, error_msg)
+        bot.reply_to(message, f"❌ Ошибка при выполнении /test: {e}")
 
 @bot.message_handler(func=lambda m: m.chat.type == 'channel', content_types=['text', 'photo', 'video'])
 def handle_new_channel_post(message):
