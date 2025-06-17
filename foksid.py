@@ -3,16 +3,6 @@ from googleapiclient.discovery import build
 import os
 import time
 
-# Запоминаем время запуска
-START_TIME = time.time()
-
-...
-
-# В обработчике:
-if channel_post.date < START_TIME:
-    print(f"[Инфо] Это старый пост (до запуска), пропускаю.")
-    return
-
 # === Настройки бота и YouTube API ===
 BOT_TOKEN = os.getenv("BOT_TOKEN")  # или '1234567890:ABCdefGHIjklmnoPQRStuv'
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")  # или 'AIza...'
@@ -22,6 +12,12 @@ DISCUSSION_CHAT_ID = "-1002859600907"  # Числовой ID группы обс
 # === Инициализация бота и YouTube API ===
 bot = telebot.TeleBot(BOT_TOKEN)
 youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
+
+# === Время запуска бота — для фильтрации старых событий ===
+START_TIME = time.time()
+
+# === Хранилище уже обработанных постов ===
+processed_posts = set()
 
 # === Команда /start и /help ===
 @bot.message_handler(commands=['start', 'help'])
@@ -101,9 +97,6 @@ def handle_text(message):
 # === Приветственное сообщение под постом канала ===
 WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
 
-# === Хранилище уже обработанных постов ===
-processed_posts = set()
-
 # === Обработчик новых постов в канале ===
 @bot.channel_post_handler(func=lambda post: True)
 def handle_new_channel_post(channel_post):
@@ -112,8 +105,14 @@ def handle_new_channel_post(channel_post):
         if channel_post.chat.type != 'channel':
             return
 
-        # Получаем ID поста
+        # Получаем ID поста и время публикации
         post_id = channel_post.message_id
+        post_time = channel_post.date
+
+        # Игнорируем посты, опубликованные до запуска бота
+        if post_time < START_TIME:
+            print(f"[Инфо] Пост {post_id} был до запуска бота, пропускаю.")
+            return
 
         # Проверяем, обрабатывали ли мы его уже
         if post_id in processed_posts:
