@@ -13,6 +13,34 @@ DISCUSSION_CHAT_ID = "-1002859600907"  # Числовой ID группы обс
 bot = telebot.TeleBot(BOT_TOKEN)
 youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
 
+# === Приветственное сообщение под постом канала ===
+WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
+
+# === Обработчик новых постов в канале ===
+@bot.channel_post_handler(func=lambda post: True)
+def handle_new_channel_post(channel_post):
+    try:
+        # Проверяем, что это пост из канала
+        if channel_post.chat.type != 'channel':
+            return
+
+        # Получаем ID поста
+        post_id = channel_post.message_id
+
+        print(f"[Инфо] Новый пост в канале, ID: {post_id}")
+
+        # === Отправляем сообщение в группу обсуждений как ответ на пост ===
+        bot.send_message(
+            chat_id=DISCUSSION_CHAT_ID,
+            text=WELCOME_MESSAGE,
+            reply_to_message_id=post_id
+        )
+
+        print(f"[Успех] Сообщение отправлено как комментарий к посту {post_id}")
+
+    except Exception as e:
+        print(f"[Ошибка] Не удалось обработать пост: {e}")
+
 # === Команда /start и /help ===
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
@@ -88,43 +116,6 @@ def handle_text(message):
         else:
             bot.send_message(message.chat.id, f"Видео по запросу \"{text}\" не найдены.")
 
-# === Приветственное сообщение под постом канала ===
-WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
-
-# === Обработчик новых постов в канале ===
-@bot.channel_post_handler(func=lambda post: True)
-def handle_new_channel_post(channel_post):
-    try:
-        # Проверяем, что это сообщение из Telegram-канала
-        if channel_post.chat.type != 'channel':
-            return
-
-        # Получаем ID Telegram-канала
-        telegram_channel_id = channel_post.chat.id
-
-        # Здесь можно указать числовой ID вашего Telegram-канала
-        MY_TELEGRAM_CHANNEL_ID = "-1002672416624"  # Замените на свой
-
-        # Проверяем, совпадает ли канал с нашим
-        if telegram_channel_id != MY_TELEGRAM_CHANNEL_ID:
-            return
-
-        # Получаем ID поста
-        post_id = channel_post.message_id
-
-        print(f"[Инфо] Новый пост в канале, ID: {post_id}")
-
-        # Отправляем приветственное сообщение в группу как ответ
-        bot.send_message(
-            chat_id=DISCUSSION_CHAT_ID,
-            text=WELCOME_MESSAGE,
-            reply_to_message_id=post_id
-        )
-
-        print(f"[Успех] Сообщение отправлено как комментарий к посту {post_id}")
-
-    except Exception as e:
-        print(f"[Ошибка] Не удалось обработать пост: {e}")
 # === Перезапуск бота при ошибках ===
 if __name__ == "__main__":
     print("Бот запущен...")
