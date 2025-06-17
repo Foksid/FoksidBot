@@ -6,38 +6,34 @@ import time
 # === Настройки бота и YouTube API ===
 BOT_TOKEN = os.getenv("BOT_TOKEN")  # или '1234567890:ABCdefGHIjklmnoPQRStuv'
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")  # или 'AIza...'
-CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # Заменить на ID своего канала
-#DISCUSSION_CHAT_ID = "-1002859600907"  # Числовой ID группы обсуждений (публичной!)
+CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # ID твоего YouTube-канала
+
+# === ID канала и группы обсуждений ===
+CHANNEL_CHAT_ID = "-1002672416624"  # username или -100... ID твоего канала
+DISCUSSION_CHAT_ID = "-1002859600907"  # ID группы обсуждений
+
+# === Приветственное сообщение под постом канала ===
+WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
 
 # === Инициализация бота и YouTube API ===
 bot = telebot.TeleBot(BOT_TOKEN)
 youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
 
-# === Приветственное сообщение под постом канала ===
-WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
 
-@bot.message_handler(commands=['getchatid'])
-def get_chat_id(message):
-    print(f"[Инфо] Chat ID этой группы: {message.chat.id}")
-    bot.reply_to(message, f"Chat ID: `{message.chat.id}`", parse_mode="Markdown")
-# === Настройка для группы обсуждений ===
-DISCUSSION_CHAT_ID = "-1002859600907"  # заменить на ваш chat_id
-
-# === Получаем последние посты из группы обсуждений ===
-def check_new_posts():
+# === Получаем последний пост из канала ===
+def get_latest_post():
     try:
-        messages = bot.get_chat_history(chat_id=DISCUSSION_CHAT_ID, limit=5)
+        messages = bot.get_chat_history(chat_id=CHANNEL_CHAT_ID, limit=1)
         for message in messages:
-            if message.message_id and not message.from_user.is_bot:  # если это пользовательский пост
-                handle_new_post(message.message_id)
+            return message.message_id
     except Exception as e:
-        print(f"[Ошибка] Не удалось получить историю чата: {e}")
+        print(f"[Ошибка] Не удалось получить последние посты канала: {e}")
+        return None
 
-# === Функция ответа на новый пост ===
-def handle_new_post(post_id):
+
+# === Функция отправки сообщения в обсуждение поста ===
+def send_welcome_to_discussion(post_id):
     try:
-        WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
-
         bot.send_message(
             chat_id=DISCUSSION_CHAT_ID,
             text=WELCOME_MESSAGE,
@@ -49,13 +45,8 @@ def handle_new_post(post_id):
     except Exception as e:
         print(f"[Ошибка] Не удалось обработать пост: {e}")
 
-# === Команда /start и /help ===
-@bot.message_handler(commands=['start', 'help'])
-def send_welcome(message):
-    if message.chat.type == 'private':
-        bot.reply_to(message, "Привет! Напишите ключевое слово для поиска видео на моем YouTube-канале.")
 
-# === Проверка, доступно ли видео ===
+# === Поиск видео по ключевому слову на канале ===
 def get_valid_video(video_id):
     try:
         request = youtube.videos().list(
@@ -71,7 +62,7 @@ def get_valid_video(video_id):
         print(f"[Ошибка] Не удалось проверить видео {video_id}: {e}")
     return False
 
-# === Поиск видео по ключевому слову на канале ===
+
 def search_videos(keyword):
     result = []
     next_page_token = None
@@ -103,10 +94,17 @@ def search_videos(keyword):
 
     return result
 
-# === Обработка текстовых сообщений ТОЛЬКО в ЛС ===         
+
+# === Команды /start и /help === 
+@bot.message_handler(commands=['start', 'help'])
+def send_welcome(message):
+    if message.chat.type == 'private':
+        bot.reply_to(message, "Привет! Напишите ключевое слово для поиска видео на моем YouTube-канале.")
+
+
+# === Обработка текстовых сообщений ТОЛЬКО в ЛС ===
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
-    # Обрабатываем только личные сообщения
     if message.chat.type == 'private':
         text = message.text.strip().lower()
 
@@ -124,12 +122,24 @@ def handle_text(message):
         else:
             bot.send_message(message.chat.id, f"Видео по запросу \"{text}\" не найдены.")
 
-# === Перезапуск бота при ошибках ===
+
+# === Основной цикл работы бота ===
 if __name__ == "__main__":
     print("Бот запущен...")
+
+    last_post_id = None
+
     while True:
         try:
-            bot.polling(none_stop=True)
+            latest_post_id = get_latest_post()
+            if latest_post_id and latest_post_id != last_post_id:
+                print(f"[Инфо] Обнаружен новый пост с ID: {latest_post_id}")
+                send_welcome_to_discussion(latest_post_id)
+                last_post_id = latest_post_id
+
+            bot.polling(none_stop=True, timeout=60)
+            time.sleep(10)  # раз в 10 секунд проверяем новые посты
+
         except Exception as e:
-            print(f"[Ошибка] {e}. Перезапуск бота через 15 секунд...")
+            print(f"[Ошибка] {e}. Перезапуск через 15 секунд...")
             time.sleep(15)
