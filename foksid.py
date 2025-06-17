@@ -2,7 +2,7 @@ import telebot
 from googleapiclient.discovery import build
 import os
 import time
-
+import requests
 # === Настройки бота и YouTube API ===
 BOT_TOKEN = os.getenv("BOT_TOKEN")  # или '1234567890:ABCdefGHIjklmnoPQRStuv'
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")  # или 'AIza...'
@@ -29,10 +29,25 @@ def get_discussion_post_id(channel_chat_id):
 
         print(f"[INFO] Группа обсуждений: {linked_chat_id}")
 
-        # Получаем последнее сообщение в группе обсуждений
-        msg = bot.get_message(chat_id=linked_chat_id, message_id=1)
-        print(f"[INFO] Первое сообщение в группе: {msg.message_id}")
-        return msg.message_id
+        # Получаем первое сообщение в группе обсуждений через Telegram API
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/getMessages" 
+        response = requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getChat",  params={"chat_id": linked_chat_id})
+        data = response.json()
+        
+        # Получаем последнее сообщение
+        response = requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getChatHistory",  params={
+            "chat_id": linked_chat_id,
+            "limit": 1
+        })
+        data = response.json()
+
+        if data['ok'] and len(data['result']['messages']) > 0:
+            msg_id = data['result']['messages'][0]['message_id']
+            print(f"[INFO] Найден новый пост в группе: {msg_id}")
+            return msg_id
+        else:
+            print("[INFO] Не удалось получить сообщения из группы")
+            return None
 
     except Exception as e:
         print(f"[Ошибка при получении ID поста из группы]: {e}")
