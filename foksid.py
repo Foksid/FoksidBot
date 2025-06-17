@@ -4,13 +4,20 @@ import os
 import time
 
 # === Настройки бота и YouTube API ===
-BOT_TOKEN = os.getenv("BOT_TOKEN")  # или укажи напрямую: '1234567890:ABCdefGHIjklmnoPQRStuv'
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # или '1234567890:ABCdefGHIjklmnoPQRStuv'
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")  # или 'AIza...'
 CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # Заменить на ID своего канала
+DISCUSSION_CHAT_ID = "-1002859600907"  # Числовой ID группы обсуждений (публичной!)
 
 # === Инициализация бота и YouTube API ===
 bot = telebot.TeleBot(BOT_TOKEN)
 youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
+
+# === Время запуска бота — для фильтрации старых событий ===
+START_TIME = time.time()
+
+# === Хранилище уже обработанных постов ===
+processed_posts = set()
 
 # === Команда /start и /help ===
 @bot.message_handler(commands=['start', 'help'])
@@ -66,7 +73,7 @@ def search_videos(keyword):
 
     return result
 
-# === Обработка текстовых сообщений ТОЛЬКО в ЛС ===   
+# === Обработка текстовых сообщений ТОЛЬКО в ЛС ===         
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
     # Обрабатываем только личные сообщения
@@ -87,9 +94,10 @@ def handle_text(message):
         else:
             bot.send_message(message.chat.id, f"Видео по запросу \"{text}\" не найдены.")
 
-# === Отправка приветственного сообщения как комментария под постом ===
+# === Приветственное сообщение под постом канала ===
 WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
 
+# === Обработчик новых постов в канале ===
 @bot.channel_post_handler(func=lambda post: True)
 def handle_new_channel_post(channel_post):
     try:
@@ -97,20 +105,36 @@ def handle_new_channel_post(channel_post):
         if channel_post.chat.type != 'channel':
             return
 
-        chat_id = channel_post.chat.id
+        # Получаем ID поста и время публикации
         post_id = channel_post.message_id
+        post_time = channel_post.date
 
-        # Отправляем сообщение как ответ под постом
+        # Игнорируем посты, опубликованные до запуска бота
+        if post_time < START_TIME:
+            print(f"[Инфо] Пост {post_id} был до запуска бота, пропускаю.")
+            return
+
+        # Проверяем, обрабатывали ли мы его уже
+        if post_id in processed_posts:
+            print(f"[Инфо] Пост {post_id} уже обработан, пропускаю.")
+            return
+
+        print(f"[Инфо] Новый пост в канале, ID: {post_id}")
+
+        # === Отправляем сообщение в группу обсуждений как ответ на пост ===
         bot.send_message(
-            chat_id=chat_id,
+            chat_id=DISCUSSION_CHAT_ID,
             text=WELCOME_MESSAGE,
-            reply_to_message_id=post_id  # Это делает сообщение как будто нажали "Ответить"
+            reply_to_message_id=post_id
         )
 
-        print(f"[Успех] Сообщение отправлено как комментарий под постом {post_id}")
+        # Добавляем в список обработанных
+        processed_posts.add(post_id)
+
+        print(f"[Успех] Сообщение отправлено как комментарий к посту {post_id}")
 
     except Exception as e:
-        print(f"[Ошибка] Не удалось отправить комментарий: {e}")
+        print(f"[Ошибка] Не удалось обработать пост: {e}")
 
 # === Перезапуск бота при ошибках ===
 if __name__ == "__main__":
