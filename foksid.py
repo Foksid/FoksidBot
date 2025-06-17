@@ -7,10 +7,7 @@ import time
 BOT_TOKEN = os.getenv("BOT_TOKEN")  # или '1234567890:ABCdefGHIjklmnoPQRStuv'
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")  # или 'AIza...'
 CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # ID твоего YouTube-канала
-
-# === ID канала и группы обсуждений ===
-CHANNEL_CHAT_ID = "-1002672416624"  # username или -100... ID твоего канала
-DISCUSSION_CHAT_ID = "-1002859600907"  # ID группы обсуждений
+CHANNEL_CHAT_ID = "-1002672416624"  # username канала или -100... ID
 
 # === Приветственное сообщение под постом канала ===
 WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
@@ -20,27 +17,41 @@ bot = telebot.TeleBot(BOT_TOKEN)
 youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
 
 
-# === Получаем последний пост из канала ===
-def get_latest_post():
+# === Получаем ID связанного поста в группе обсуждений ===
+def get_discussion_post_id(channel_chat_id):
     try:
-        # Получаем информацию о канале
-        chat_info = bot.get_chat(CHANNEL_CHAT_ID)
-        print(f"[DEBUG] Инфо о канале: {chat_info}")
+        chat_info = bot.get_chat(channel_chat_id)
+        linked_chat_id = chat_info.linked_chat_id
 
-        # Получаем самый свежий пост
-        message = bot.get_message(chat_id=CHANNEL_CHAT_ID, message_id=chat_info.last_message_id)
-        print(f"[DEBUG] Последнее сообщение: {message.message_id}")
-        return message.message_id
+        if not linked_chat_id:
+            print("[Ошибка] У канала не установлена группа обсуждений.")
+            return None
+
+        print(f"[INFO] Группа обсуждений: {linked_chat_id}")
+
+        messages = bot.get_chat_history(chat_id=linked_chat_id, limit=5)
+
+        for msg in messages:
+            if msg.forward_from_chat and msg.forward_from_chat.id == bot.get_chat(channel_chat_id).id:
+                print(f"[INFO] Найден новый пост в группе обсуждений: {msg.message_id}")
+                return msg.message_id
+
+        print("[INFO] Не удалось найти связанный пост в группе обсуждений")
+        return None
+
     except Exception as e:
-        print(f"[Ошибка] Не удалось получить последние посты: {e}")
+        print(f"[Ошибка при получении ID поста из группы]: {e}")
         return None
 
 
 # === Функция отправки сообщения в обсуждение поста ===
 def send_welcome_to_discussion(post_id):
     try:
+        chat_info = bot.get_chat(CHANNEL_CHAT_ID)
+        linked_chat_id = chat_info.linked_chat_id
+
         bot.send_message(
-            chat_id=DISCUSSION_CHAT_ID,
+            chat_id=linked_chat_id,
             text=WELCOME_MESSAGE,
             reply_to_message_id=post_id,
             disable_web_page_preview=True
@@ -48,7 +59,7 @@ def send_welcome_to_discussion(post_id):
         print(f"[Успех] Сообщение отправлено как комментарий к посту {post_id}")
 
     except Exception as e:
-        print(f"[Ошибка] Не удалось обработать пост: {e}")
+        print(f"[Ошибка] Не удалось отправить сообщение к посту {post_id}: {e}")
 
 
 # === Поиск видео по ключевому слову на канале ===
@@ -136,14 +147,14 @@ if __name__ == "__main__":
 
     while True:
         try:
-            latest_post_id = get_latest_post()
-            if latest_post_id and latest_post_id != last_post_id:
-                print(f"[Инфо] Обнаружен новый пост с ID: {latest_post_id}")
-                send_welcome_to_discussion(latest_post_id)
-                last_post_id = latest_post_id
+            discussion_post_id = get_discussion_post_id(CHANNEL_CHAT_ID)
+
+            if discussion_post_id and discussion_post_id != last_post_id:
+                print(f"[INFO] Обнаружен новый пост в группе: {discussion_post_id}")
+                send_welcome_to_discussion(discussion_post_id)
+                last_post_id = discussion_post_id
 
             bot.polling(none_stop=True, timeout=60)
-            time.sleep(10)  # раз в 10 секунд проверяем новые посты
 
         except Exception as e:
             print(f"[Ошибка] {e}. Перезапуск через 15 секунд...")
