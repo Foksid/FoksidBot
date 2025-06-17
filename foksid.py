@@ -93,21 +93,21 @@ WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами 
 @bot.channel_post_handler(func=lambda post: True)
 def handle_new_channel_post(channel_post):
     try:
-        # Проверяем, есть ли обсуждение у поста
-        if hasattr(channel_post, 'message_thread_id'):
+        # Проверяем, что это пост из канала
+        if channel_post.chat.type in ['channel']:
             chat_id = channel_post.chat.id
-            thread_id = channel_post.message_thread_id
+            post_id = channel_post.message_id  # ID поста, на который мы отвечаем
 
             bot.send_message(
                 chat_id,
                 WELCOME_MESSAGE,
-                reply_to_message_id=thread_id  # Отвечаем именно в тему этого поста
+                reply_to_message_id=post_id  # Отвечаем именно под этим постом
             )
-            print(f"[Успех] Сообщение отправлено в обсуждение поста: {channel_post.message_id}")
+            print(f"[Успех] Сообщение отправлено под постом: {post_id}")
         else:
-            print("[Инфо] У поста нет обсуждения.")
+            print("[Инфо] Это не пост из канала.")
     except Exception as e:
-        print(f"[Ошибка] Не удалось отправить сообщение в обсуждение: {e}")
+        print(f"[Ошибка] Не удалось отправить сообщение под постом: {e}")
 
 # === Перезапуск бота при ошибках ===
 if __name__ == "__main__":
