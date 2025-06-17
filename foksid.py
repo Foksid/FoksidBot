@@ -95,13 +95,26 @@ WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами 
 @bot.channel_post_handler(func=lambda post: True)
 def handle_new_channel_post(channel_post):
     try:
-        # Убедиться, что это именно новый пост в канале, а не ответ в группе
-        if channel_post.chat.id != int(CHANNEL_ID):  # Сравниваем ID канала
+        # Проверяем, что это сообщение из Telegram-канала
+        if channel_post.chat.type != 'channel':
             return
 
+        # Получаем ID Telegram-канала
+        telegram_channel_id = channel_post.chat.id
+
+        # Здесь можно указать числовой ID вашего Telegram-канала
+        MY_TELEGRAM_CHANNEL_ID = -1002672416624  # Замените на свой
+
+        # Проверяем, совпадает ли канал с нашим
+        if telegram_channel_id != MY_TELEGRAM_CHANNEL_ID:
+            return
+
+        # Получаем ID поста
         post_id = channel_post.message_id
+
         print(f"[Инфо] Новый пост в канале, ID: {post_id}")
 
+        # Отправляем приветственное сообщение в группу как ответ
         bot.send_message(
             chat_id=DISCUSSION_CHAT_ID,
             text=WELCOME_MESSAGE,
@@ -112,7 +125,6 @@ def handle_new_channel_post(channel_post):
 
     except Exception as e:
         print(f"[Ошибка] Не удалось обработать пост: {e}")
-
 # === Перезапуск бота при ошибках ===
 if __name__ == "__main__":
     print("Бот запущен...")
