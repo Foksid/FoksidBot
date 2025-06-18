@@ -92,26 +92,26 @@ def handle_text(message):
             bot.send_message(message.chat.id, f"Видео по запросу \"{text}\" не найдены.")
 
 # === Обработчик новых постов в Telegram-канале (только оригинальные) ===
-@bot.channel_post_handler(func=lambda post: post.chat.id == TELEGRAM_CHANNEL_ID)
+@bot.channel_post_handler(func=lambda post: True)
 def handle_new_channel_post(channel_post):
+    print(f"[DEBUG] Получен пост из чата: {channel_post.chat.id}")
+    
+    if channel_post.chat.id != TELEGRAM_CHANNEL_ID:
+        return
+
+    if hasattr(channel_post, 'forward_from') or hasattr(channel_post, 'forward_from_chat'):
+        return
+
     try:
-        # Пропускаем репосты и медиагруппы
-        if hasattr(channel_post, 'forward_from') or hasattr(channel_post, 'forward_from_chat'):
-            return
-
         post_id = channel_post.message_id
-        print(f"[Инфо] Новый пост в канале, ID: {post_id}")
-
         bot.send_message(
             chat_id=DISCUSSION_CHAT_ID,
             text=WELCOME_MESSAGE,
             reply_to_message_id=post_id
         )
-
-        print(f"[Успех] Сообщение отправлено как комментарий к посту {post_id}")
-
+        print(f"[Успех] Сообщение отправлено к посту {post_id}")
     except Exception as e:
-        print(f"[Ошибка] Не удалось обработать пост: {e}")
+        print(f"[Ошибка] {e}")
 
 # === Перезапуск бота при ошибках ===
 if __name__ == "__main__":
