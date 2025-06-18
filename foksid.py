@@ -92,26 +92,23 @@ def handle_text(message):
 WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
 
 # === Обработчик новых постов в канале ===
-@bot.channel_post_handler(func=lambda post: True)
+@bot.channel_post_handler(content_types=['text'])
 def handle_new_channel_post(channel_post):
     try:
-        # Проверяем, что это пост из канала
-        if channel_post.chat.type != 'channel':
-            return
+        # Проверяем, что это не форвард и не репост
+        if not hasattr(channel_post, 'forward_from') and not channel_post.forward_from_chat:
+            post_id = channel_post.message_id
 
-        # Получаем ID поста
-        post_id = channel_post.message_id
+            print(f"[Инфо] Новый пост в канале, ID: {post_id}")
 
-        print(f"[Инфо] Новый пост в канале, ID: {post_id}")
+            # Отправляем сообщение в группу обсуждений как ответ на пост
+            bot.send_message(
+                chat_id=DISCUSSION_CHAT_ID,
+                text=WELCOME_MESSAGE,
+                reply_to_message_id=post_id
+            )
 
-        # === Отправляем сообщение в группу обсуждений как ответ на пост ===
-        bot.send_message(
-            chat_id=DISCUSSION_CHAT_ID,
-            text=WELCOME_MESSAGE,
-            reply_to_message_id=post_id
-        )
-
-        print(f"[Успех] Сообщение отправлено как комментарий к посту {post_id}")
+            print(f"[Успех] Сообщение отправлено как комментарий к посту {post_id}")
 
     except Exception as e:
         print(f"[Ошибка] Не удалось обработать пост: {e}")
