@@ -1,11 +1,61 @@
+# === Python ===
 *.pyc
 __pycache__
+*.py[cod]
+*$py.class
+
+# === Виртуальное окружение ===
+venv/
 env/
-*.db
+ENV/
+env.bak/
+venv.bak/
+
+# === Poetry ===
+.poetry/
+build/
+dist/
+*.egg-info/
+.Python
+
+# === Зависимости ===
+requirements.txt  # если генерится автоматически
+constraints.txt
+
+# === Логи и кэш ===
+logs/
 *.log
+*.sqlite3
+*.sql
+*.db
 *.tmp
+*.swp
+*.swo
+*.swn
+.DS_Store
+Thumbs.db
+
+# === Токены и сессии ===
 *.token
 *.session
-*.json
-*.ini
-*.env
+*.key
+*.pem
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# === Асинхронные фреймворки (aiogram, fastapi и др.) ===
+*.py[co]
+*.retry
+*.pid
+*.seed
+*.pid.lock
+
+# === VSCode / PyCharm / редакторы кода ===
+.idea/
+.vscode/
+*.iml
+*.sublime-project
+*.sublime-workspace
