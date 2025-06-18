@@ -3,15 +3,19 @@ from googleapiclient.discovery import build
 import os
 import time
 
-# === Настройки бота и YouTube API ===
-BOT_TOKEN = os.getenv("BOT_TOKEN")  # или '1234567890:ABCdefGHIjklmnoPQRStuv'
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")  # или 'AIza...'
-CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # Заменить на ID своего канала
-DISCUSSION_CHAT_ID = "-1002880107017"  # Числовой ID группы обсуждений (публичной!)
+# === Настройки бота и API ===
+BOT_TOKEN = os.getenv("BOT_TOKEN") or "ВАШ_ТОКЕН"  # Например: '1234567890:ABCdefGHIjklmnoPQRStuv'
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY") or "ВАШ_YOUTUBE_API_KEY"
+YOUTUBE_CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # ID твоего YouTube-канала
+TELEGRAM_CHANNEL_ID = -1001234567890              # ID основного Telegram-канала
+DISCUSSION_CHAT_ID = -1002880107017               # ID группы обсуждений (публичной!)
 
 # === Инициализация бота и YouTube API ===
 bot = telebot.TeleBot(BOT_TOKEN)
 youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
+
+# === Сообщение под каждым постом канала ===
+WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
 
 # === Команда /start и /help ===
 @bot.message_handler(commands=['start', 'help'])
@@ -19,7 +23,7 @@ def send_welcome(message):
     if message.chat.type == 'private':
         bot.reply_to(message, "Привет! Напишите ключевое слово для поиска видео на моем YouTube-канале.")
 
-# === Проверка, доступно ли видео ===
+# === Проверка доступности видео ===
 def get_valid_video(video_id):
     try:
         request = youtube.videos().list(
@@ -35,7 +39,7 @@ def get_valid_video(video_id):
         print(f"[Ошибка] Не удалось проверить видео {video_id}: {e}")
     return False
 
-# === Поиск видео по ключевому слову на канале ===
+# === Поиск видео на YouTube по ключевому слову ===
 def search_videos(keyword):
     result = []
     next_page_token = None
@@ -43,7 +47,7 @@ def search_videos(keyword):
     while len(result) < 10:  # максимум 10 результатов
         request = youtube.search().list(
             part='snippet',
-            channelId=CHANNEL_ID,
+            channelId=YOUTUBE_CHANNEL_ID,
             q=keyword,
             type='video',
             maxResults=10,
@@ -56,10 +60,20 @@ def search_videos(keyword):
             video_id = item['id']['videoId']
             if keyword.lower() in title.lower():
                 if get_valid_video(video_id):  # Проверяем, доступно ли видео
-                    url = f"https://youtube.com/watch?v={video_id}" result.append({'title': title, 'url': url}) else: print(f"[Инфо] Пропущено недоступное видео: {video_id}") next_page_token = response.get('nextPageToken') if not next_page_token: break return result # === Обработка текстовых сообщений ТОЛЬКО в ЛС ===
+                    url = f"https://youtube.com/watch?v={video_id}"
+                    result.append({'title': title, 'url': url})
+                else:
+                    print(f"[Инфо] Пропущено недоступное видео: {video_id}")
+
+        next_page_token = response.get('nextPageToken')
+        if not next_page_token:
+            break
+
+    return result
+
+# === Обработка текстовых сообщений ТОЛЬКО в ЛС === 
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
-    # Обрабатываем только личные сообщения
     if message.chat.type == 'private':
         text = message.text.strip().lower()
 
@@ -77,23 +91,18 @@ def handle_text(message):
         else:
             bot.send_message(message.chat.id, f"Видео по запросу \"{text}\" не найдены.")
 
-# === Приветственное сообщение под постом канала ===
-WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules"  
-
-# === Обработчик новых постов в канале ===
-@bot.channel_post_handler(func=lambda post: True)
+# === Обработчик новых постов в Telegram-канале (только оригинальные) ===
+@bot.channel_post_handler(func=lambda post: post.chat.id == TELEGRAM_CHANNEL_ID)
 def handle_new_channel_post(channel_post):
     try:
-        # Проверяем, что это пост из канала
-        if channel_post.chat.type != 'channel':
+        # Убедимся, что это оригинальный пост, а не репост или медиагруппа
+        if hasattr(channel_post, 'forward_from') or hasattr(channel_post, 'forward_from_chat'):
             return
 
-        # Получаем ID поста
         post_id = channel_post.message_id
-
         print(f"[Инфо] Новый пост в канале, ID: {post_id}")
 
-        # === Отправляем сообщение в группу обсуждений как ответ на пост ===
+        # Отправляем сообщение в группу обсуждений как ответ на пост
         bot.send_message(
             chat_id=DISCUSSION_CHAT_ID,
             text=WELCOME_MESSAGE,
