@@ -4,9 +4,8 @@ import asyncio
 import logging
 from aiogram import Bot, Dispatcher
 from config import BOT_TOKEN
-from handlers import channel_post, admin_create_post
+from handlers import channel_post, admin_create_post, user  # <-- добавили user
 from services.discussion_service import pending_comments
-
 # Логирование
 logging.basicConfig(level=logging.INFO)
 
@@ -44,6 +43,7 @@ async def main():
     dp = Dispatcher()
 
     # Подключаем роутеры
+    dp.include_router(user.router)
     dp.include_router(channel_post.router)
     dp.include_router(admin_create_post.router)
 
