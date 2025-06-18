@@ -1,2 +1,2 @@
-pyTelegramBotAPI
-google-api-python-client
+aiogram==3.1.1
+python-dotenv
