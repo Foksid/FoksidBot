@@ -1,12 +1,15 @@
 # config.py
-import os
+# === Бот ===
+BOT_TOKEN: str = os.getenv("BOT_TOKEN", "")  # Токен бота
+ADMIN_ID: int = int(os.getenv("ADMIN_ID", "1003278206"))  # Числовой ID администратора
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
-YOUTUBE_CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"
-ADMIN_ID: int = int(os.getenv("ADMIN_ID", "1003278206"))  # Числовой ID админа
-TELEGRAM_CHANNEL_USERNAME = "@foksid322"
-DISCUSSION_CHAT_USERNAME = "@foksid322test"
+# === YouTube ===
+YOUTUBE_API_KEY: str = os.getenv("YOUTUBE_API_KEY", "")
+YOUTUBE_CHANNEL_ID: str = "UCGS02-NLVxwYHwqUx7IFr3g"  # ID твоего YouTube-канала
 
-# Настройки БД (заглушка, можно заменить на реальную реализацию)
+# === Telegram каналы ===
+TELEGRAM_CHANNEL_USERNAME: str = "@foksid322"         # Основной канал
+DISCUSSION_CHAT_USERNAME: str = "@foksid322test"       # Группа обсуждений
+
+# === База данных (заглушка) ===
 DATABASE_URL = None
