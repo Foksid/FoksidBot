@@ -97,9 +97,11 @@ def handle_new_channel_post(channel_post):
     print(f"[DEBUG] Получен пост из чата: {channel_post.chat.id}")
     
     if channel_post.chat.id != TELEGRAM_CHANNEL_ID:
+        print(f"[INFO] Не мой канал. Ожидал: {TELEGRAM_CHANNEL_ID}, получил: {channel_post.chat.id}")
         return
 
     if hasattr(channel_post, 'forward_from') or hasattr(channel_post, 'forward_from_chat'):
+        print("[DEBUG] Это репост или медиагруппа — пропускаю")
         return
 
     try:
@@ -109,9 +111,10 @@ def handle_new_channel_post(channel_post):
             text=WELCOME_MESSAGE,
             reply_to_message_id=post_id
         )
-        print(f"[Успех] Сообщение отправлено к посту {post_id}")
+        print(f"[Успех] Сообщение отправлено как комментарий к посту {post_id}")
+
     except Exception as e:
-        print(f"[Ошибка] {e}")
+        print(f"[Ошибка] Не удалось обработать пост: {e}")
 
 # === Перезапуск бота при ошибках ===
 if __name__ == "__main__":
