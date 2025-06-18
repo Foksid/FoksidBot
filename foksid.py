@@ -34,22 +34,31 @@ def store_pending_first_comment(channel_id, channel_message_id, comment_text, co
 def comment_sender():
     while True:
         for ((channel_id, message_id), data) in list(pending_comments.items()):
-            try:
-                time.sleep(7)  # Ждём, пока пост станет доступен
-                bot.send_message(
-                    chat_id=DISCUSSION_CHAT_ID,
-                    text=data["text"],
-                    reply_to_message_id=message_id,
-                    reply_markup=data.get("markup")
-                )
-                del pending_comments[(channel_id, message_id)]
-                print(f"[Успех] Комментарий к {message_id} отправлен")
-            except Exception as e:
-                print(f"[Ошибка] Не удалось отправить комментарий к {message_id}: {e}")
-        time.sleep(5)
+            attempt = 0
+            max_attempts = 5
+            delay = 3  # Начальная задержка между попытками
 
-threading.Thread(target=comment_sender, daemon=True).start()
+            while attempt < max_attempts:
+                try:
+                    # Попытка отправить комментарий
+                    bot.send_message(
+                        chat_id=DISCUSSION_CHAT_ID,
+                        text=data["text"],
+                        reply_to_message_id=message_id,
+                        reply_markup=data.get("markup")
+                    )
+                    print(f"[Успех] Комментарий к {message_id} отправлен")
+                    del pending_comments[(channel_id, message_id)]
+                    break  # Выход из цикла попыток
+                except Exception as e:
+                    print(f"[Ошибка] Попытка {attempt + 1} — Не удалось отправить комментарий к {message_id}: {e}")
+                    attempt += 1
+                    time.sleep(delay)  # Ждём перед повтором
+            else:
+                print(f"[Критично] Не удалось отправить комментарий к {message_id} за {max_attempts} попыток.")
+                del pending_comments[(channel_id, message_id)]  # Удаляем задачу после всех попыток
 
+        time.sleep(2)
 # === Получаем ID чата по юзернейму ===
 def get_chat_id(username):
     try:
