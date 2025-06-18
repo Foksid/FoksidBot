@@ -2,26 +2,88 @@ import telebot
 from googleapiclient.discovery import build
 import os
 import time
+import threading
 
 # === Настройки бота и API ===
-BOT_TOKEN = os.getenv("BOT_TOKEN") or "ВАШ_ТОКЕН"  # Например: '1234567890:ABCdefGHIjklmnoPQRStuv'
+BOT_TOKEN = os.getenv("BOT_TOKEN") #or "ВАШ_ТОКЕН"  # Например: '1234567890:ABCdefGHIjklmnoPQRStuv'
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY") or "ВАШ_YOUTUBE_API_KEY"
-YOUTUBE_CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # ID твоего YouTube-канала
-TELEGRAM_CHANNEL_ID = -1002847993909              # ID твоего Telegram-канала
+YOUTUBE_CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # ID YouTube-канала
+TELEGRAM_CHANNEL_ID = -1002847993909              # ID основного Telegram-канала
 DISCUSSION_CHAT_ID = -1002880107017               # ID группы обсуждений
+
+# === Сообщение под каждым постом канала ===
+WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
 
 # === Инициализация бота и YouTube API ===
 bot = telebot.TeleBot(BOT_TOKEN)
 youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
 
-# === Сообщение под каждым постом канала ===
-WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
+# === Хранилище отложенных комментариев ===
+pending_comments = {}
+
+def store_pending_first_comment(channel_id, channel_message_id, comment_text, comment_markup=None):
+    """Сохраняет задачу на отправку первого комментария"""
+    pending_comments[(channel_id, channel_message_id)] = {
+        "text": comment_text,
+        "markup": comment_markup
+    }
+
+# === Фоновый поток для отправки комментариев в группу ===
+def comment_sender():
+    while True:
+        for ((channel_id, message_id), data) in list(pending_comments.items()):
+            try:
+                bot.send_message(
+                    chat_id=DISCUSSION_CHAT_ID,
+                    text=data["text"],
+                    reply_to_message_id=message_id,
+                    reply_markup=data.get("markup")
+                )
+                del pending_comments[(channel_id, message_id)]
+            except Exception as e:
+                print(f"[Ошибка] Не удалось отправить комментарий к {message_id}: {e}")
+        time.sleep(5)
+
+# Запуск фонового потока
+threading.Thread(target=comment_sender, daemon=True).start()
+
+# === Обработчик новых постов в Telegram-канале ===
+@bot.channel_post_handler(func=lambda post: True)
+def handle_new_channel_post(channel_post):
+    print(f"[DEBUG] Получен пост из чата: {channel_post.chat.id}")
+
+    if channel_post.chat.id != TELEGRAM_CHANNEL_ID:
+        print(f"[INFO] Не мой канал. Ожидал: {TELEGRAM_CHANNEL_ID}, получил: {channel_post.chat.id}")
+        return
+
+    # Пропускаем репосты
+    if channel_post.forward_from or channel_post.forward_from_chat:
+        print("[DEBUG] Это репост — пропускаю")
+        return
+
+    try:
+        post_id = channel_post.message_id
+        print(f"[Инфо] Новый пост в канале, ID: {post_id}")
+
+        # Сохраняем задачу на комментарий
+        markup = telebot.types.InlineKeyboardMarkup()
+        markup.add(telebot.types.InlineKeyboardButton("Правила", url="https://t.me/yourrules")) 
+
+        store_pending_first_comment(
+            channel_id=channel_post.chat.id,
+            channel_message_id=post_id,
+            comment_text=WELCOME_MESSAGE,
+            comment_markup=markup
+        )
+
+    except Exception as e:
+        print(f"[Ошибка] Не удалось обработать пост: {e}")
 
 # === Команда /start и /help ===
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     if message.chat.type == 'private':
-        bot.reply_to(message, "Привет! Напишите ключевое слово для поиска видео на моем YouTube-канале.")
+        bot.reply_to(message, "Привет! Напишите ключевое слово для поиска видео на моём YouTube-канале.")
 
 # === Проверка доступности видео ===
 def get_valid_video(video_id):
@@ -91,41 +153,10 @@ def handle_text(message):
         else:
             bot.send_message(message.chat.id, f"Видео по запросу \"{text}\" не найдены.")
 
-# === Обработчик новых постов в Telegram-канале (только оригинальные) ===
-@bot.channel_post_handler(func=lambda post: True)
-def handle_new_channel_post(channel_post):
-    print(f"[DEBUG] Получен пост из чата: {channel_post.chat.id}")
-    
-    if channel_post.chat.id != TELEGRAM_CHANNEL_ID:
-        print(f"[INFO] Не мой канал. Ожидал: {TELEGRAM_CHANNEL_ID}, получил: {channel_post.chat.id}")
-        return
-
-    # Отладка
-    print(f"[DEBUG] forward_from: {channel_post.forward_from}")
-    print(f"[DEBUG] forward_from_chat: {channel_post.forward_from_chat}")
-    print(f"[DEBUG] media_group_id: {getattr(channel_post, 'media_group_id', None)}")
-
-    # Пропускаем только репосты
-    if channel_post.forward_from or channel_post.forward_from_chat:
-        print("[DEBUG] Это репост — пропускаю")
-        return
-
-    try:
-        post_id = channel_post.message_id
-        bot.send_message(
-            chat_id=DISCUSSION_CHAT_ID,
-            text=WELCOME_MESSAGE,
-            reply_to_message_id=post_id
-        )
-        print(f"[Успех] Сообщение отправлено как комментарий к посту {post_id}")
-
-    except Exception as e:
-        print(f"[Ошибка] Не удалось обработать пост: {e}")
-
 # === Перезапуск бота при ошибках ===
 if __name__ == "__main__":
     print("Бот запущен...")
-    time.sleep(5)  # Даём время освободиться от прошлого подключения
+    time.sleep(5)  # Ждём 5 секунд перед началом работы
     while True:
         try:
             bot.polling(none_stop=True, skip_pending=True)
