@@ -5,14 +5,17 @@ import time
 import threading
 
 # === Настройки бота и API ===
-BOT_TOKEN = os.getenv("BOT_TOKEN") #or "ВАШ_ТОКЕН"  # Например: '1234567890:ABCdefGHIjklmnoPQRStuv'
+BOT_TOKEN = os.getenv("BOT_TOKEN") or "ВАШ_ТОКЕН"
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY") or "ВАШ_YOUTUBE_API_KEY"
 YOUTUBE_CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # ID YouTube-канала
-TELEGRAM_CHANNEL_ID = -1002847993909              # ID основного Telegram-канала
-DISCUSSION_CHAT_ID = -1002880107017               # ID группы обсуждений
+
+# === Юзернеймы Telegram-канала и группы обсуждений ===
+TELEGRAM_CHANNEL_USERNAME = "@foksid322"        # Основной канал
+DISCUSSION_CHAT_USERNAME = "@foksid322test"     # Группа обсуждений
 
 # === Сообщение под каждым постом канала ===
 WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
+RULES_URL = "https://t.me/yourrules" 
 
 # === Инициализация бота и YouTube API ===
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -22,17 +25,17 @@ youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
 pending_comments = {}
 
 def store_pending_first_comment(channel_id, channel_message_id, comment_text, comment_markup=None):
-    """Сохраняет задачу на отправку первого комментария"""
     pending_comments[(channel_id, channel_message_id)] = {
         "text": comment_text,
         "markup": comment_markup
     }
 
-# === Фоновый поток для отправки комментариев в группу ===
+# === Фоновый поток для отправки комментариев с задержкой ===
 def comment_sender():
     while True:
         for ((channel_id, message_id), data) in list(pending_comments.items()):
             try:
+                time.sleep(7)  # Ждём, пока пост станет доступен
                 bot.send_message(
                     chat_id=DISCUSSION_CHAT_ID,
                     text=data["text"],
@@ -40,12 +43,36 @@ def comment_sender():
                     reply_markup=data.get("markup")
                 )
                 del pending_comments[(channel_id, message_id)]
+                print(f"[Успех] Комментарий к {message_id} отправлен")
             except Exception as e:
                 print(f"[Ошибка] Не удалось отправить комментарий к {message_id}: {e}")
         time.sleep(5)
 
-# Запуск фонового потока
 threading.Thread(target=comment_sender, daemon=True).start()
+
+# === Получаем ID чата по юзернейму ===
+def get_chat_id(username):
+    try:
+        chat = bot.get_chat(username)
+        return chat.id
+    except Exception as e:
+        print(f"[Ошибка] Не удалось получить ID для {username}: {e}")
+        return None
+
+# === При запуске бота получаем ID канала и группы ===
+TELEGRAM_CHANNEL_ID = None
+DISCUSSION_CHAT_ID = None
+
+if __name__ == "__main__":
+    print("Получаем ID канала и группы...")
+    TELEGRAM_CHANNEL_ID = get_chat_id(TELEGRAM_CHANNEL_USERNAME)
+    DISCUSSION_CHAT_ID = get_chat_id(DISCUSSION_CHAT_USERNAME)
+
+    if not TELEGRAM_CHANNEL_ID or not DISCUSSION_CHAT_ID:
+        raise ValueError("Не удалось получить ID канала или группы. Проверь юзернеймы.")
+
+    print(f"ТЕЛЕГРАМ КАНАЛ ID: {TELEGRAM_CHANNEL_ID}")
+    print(f"ГРУППА ОБСУЖДЕНИЙ ID: {DISCUSSION_CHAT_ID}")
 
 # === Обработчик новых постов в Telegram-канале ===
 @bot.channel_post_handler(func=lambda post: True)
@@ -65,10 +92,11 @@ def handle_new_channel_post(channel_post):
         post_id = channel_post.message_id
         print(f"[Инфо] Новый пост в канале, ID: {post_id}")
 
-        # Сохраняем задачу на комментарий
+        # Создаём кнопку "Правила"
         markup = telebot.types.InlineKeyboardMarkup()
-        markup.add(telebot.types.InlineKeyboardButton("Правила", url="https://t.me/yourrules")) 
+        markup.add(telebot.types.InlineKeyboardButton("Правила", url=RULES_URL))
 
+        # Сохраняем задачу на комментарий
         store_pending_first_comment(
             channel_id=channel_post.chat.id,
             channel_message_id=post_id,
@@ -106,7 +134,7 @@ def search_videos(keyword):
     result = []
     next_page_token = None
 
-    while len(result) < 10:  # максимум 10 результатов
+    while len(result) < 10:
         request = youtube.search().list(
             part='snippet',
             channelId=YOUTUBE_CHANNEL_ID,
@@ -121,7 +149,7 @@ def search_videos(keyword):
             title = item['snippet']['title']
             video_id = item['id']['videoId']
             if keyword.lower() in title.lower():
-                if get_valid_video(video_id):  # Проверяем, доступно ли видео
+                if get_valid_video(video_id):  # Проверяем доступность
                     url = f"https://youtube.com/watch?v={video_id}"
                     result.append({'title': title, 'url': url})
                 else:
@@ -153,10 +181,10 @@ def handle_text(message):
         else:
             bot.send_message(message.chat.id, f"Видео по запросу \"{text}\" не найдены.")
 
-# === Перезапуск бота при ошибках ===
+# === Обработчик ошибки 409 и перезапуск ===
 if __name__ == "__main__":
     print("Бот запущен...")
-    time.sleep(5)  # Ждём 5 секунд перед началом работы
+    time.sleep(5)
     while True:
         try:
             bot.polling(none_stop=True, skip_pending=True)
