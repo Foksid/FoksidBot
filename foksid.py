@@ -100,8 +100,14 @@ def handle_new_channel_post(channel_post):
         print(f"[INFO] Не мой канал. Ожидал: {TELEGRAM_CHANNEL_ID}, получил: {channel_post.chat.id}")
         return
 
-    if hasattr(channel_post, 'forward_from') or hasattr(channel_post, 'forward_from_chat'):
-        print("[DEBUG] Это репост или медиагруппа — пропускаю")
+    # Отладка
+    print(f"[DEBUG] forward_from: {channel_post.forward_from}")
+    print(f"[DEBUG] forward_from_chat: {channel_post.forward_from_chat}")
+    print(f"[DEBUG] media_group_id: {getattr(channel_post, 'media_group_id', None)}")
+
+    # Пропускаем только репосты
+    if channel_post.forward_from or channel_post.forward_from_chat:
+        print("[DEBUG] Это репост — пропускаю")
         return
 
     try:
