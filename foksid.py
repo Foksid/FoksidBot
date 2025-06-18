@@ -7,8 +7,8 @@ import time
 BOT_TOKEN = os.getenv("BOT_TOKEN") or "ВАШ_ТОКЕН"  # Например: '1234567890:ABCdefGHIjklmnoPQRStuv'
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY") or "ВАШ_YOUTUBE_API_KEY"
 YOUTUBE_CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # ID твоего YouTube-канала
-TELEGRAM_CHANNEL_ID = -1002847993909              # ID основного Telegram-канала
-DISCUSSION_CHAT_ID = -1002880107017               # ID группы обсуждений (публичной!)
+TELEGRAM_CHANNEL_ID = -1002847993909              # ID твоего Telegram-канала
+DISCUSSION_CHAT_ID = -1002880107017               # ID группы обсуждений
 
 # === Инициализация бота и YouTube API ===
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -95,14 +95,13 @@ def handle_text(message):
 @bot.channel_post_handler(func=lambda post: post.chat.id == TELEGRAM_CHANNEL_ID)
 def handle_new_channel_post(channel_post):
     try:
-        # Убедимся, что это оригинальный пост, а не репост или медиагруппа
+        # Пропускаем репосты и медиагруппы
         if hasattr(channel_post, 'forward_from') or hasattr(channel_post, 'forward_from_chat'):
             return
 
         post_id = channel_post.message_id
         print(f"[Инфо] Новый пост в канале, ID: {post_id}")
 
-        # Отправляем сообщение в группу обсуждений как ответ на пост
         bot.send_message(
             chat_id=DISCUSSION_CHAT_ID,
             text=WELCOME_MESSAGE,
@@ -117,9 +116,10 @@ def handle_new_channel_post(channel_post):
 # === Перезапуск бота при ошибках ===
 if __name__ == "__main__":
     print("Бот запущен...")
+    time.sleep(5)  # Даём время освободиться от прошлого подключения
     while True:
         try:
-            bot.polling(none_stop=True)
+            bot.polling(none_stop=True, skip_pending=True)
         except Exception as e:
             print(f"[Ошибка] {e}. Перезапуск бота через 15 секунд...")
             time.sleep(15)
