@@ -44,13 +44,13 @@ def search_videos(keyword):
     result = []
     next_page_token = None
 
-    while len(result) < 10:  # максимум 10 результатов
+    while len(result) < 20:  # максимум 10 результатов
         request = youtube.search().list(
             part='snippet',
             channelId=YOUTUBE_CHANNEL_ID,
             q=keyword,
             type='video',
-            maxResults=10,
+            maxResults=20,
             pageToken=next_page_token
         )
         response = request.execute()
@@ -77,8 +77,8 @@ def handle_text(message):
     if message.chat.type == 'private':
         text = message.text.strip().lower()
 
-        if len(text) < 3:
-            bot.reply_to(message, "Введите минимум 3 символа для поиска.")
+        if len(text) < 2:
+            bot.reply_to(message, "Введите минимум 2 символа для поиска.")
             return
 
         bot.send_message(message.chat.id, f"Ищу видео по запросу: \"{text}\"...")
