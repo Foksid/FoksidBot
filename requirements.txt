@@ -1,2 +1,5 @@
 pyTelegramBotAPI
 google-api-python-client
+telebot
+fuzzywuzzy
+python-Levenshtein
