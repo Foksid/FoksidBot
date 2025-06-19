@@ -43,8 +43,9 @@ def get_valid_video(video_id):
 def search_videos(keyword):
     result = []
     next_page_token = None
+    keyword_lower = keyword.strip().lower()
 
-    while len(result) < 20:  # максимум 10 результатов
+    while len(result) < 20:  # максимум 20 результатов
         request = youtube.search().list(
             part='snippet',
             channelId=YOUTUBE_CHANNEL_ID,
@@ -58,12 +59,26 @@ def search_videos(keyword):
         for item in response.get('items', []):
             title = item['snippet']['title']
             video_id = item['id']['videoId']
-            if keyword.lower() in title.lower():
-                if get_valid_video(video_id):  # Проверяем, доступно ли видео
+
+            # Проверяем, доступно ли видео
+            if not get_valid_video(video_id):
+                print(f"[Инфо] Пропущено недоступное видео: {video_id}")
+                continue
+
+            # Гибкая проверка совпадения (частичное совпадение)
+            title_lower = title.lower()
+            if keyword_lower in title_lower:
+                url = f"https://youtube.com/watch?v={video_id}"
+                result.append({'title': title, 'url': url})
+            else:
+                # Альтернативный поиск: разбиваем ключевое слово и заголовок на слова 
+                keywords_set = set(keyword_lower.split())
+                title_words = set(title_lower.split())
+
+                # Если есть хотя бы одно совпадающее слово — принимаем
+                if keywords_set & title_words:
                     url = f"https://youtube.com/watch?v={video_id}"
                     result.append({'title': title, 'url': url})
-                else:
-                    print(f"[Инфо] Пропущено недоступное видео: {video_id}")
 
         next_page_token = response.get('nextPageToken')
         if not next_page_token:
