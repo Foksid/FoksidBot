@@ -2,6 +2,7 @@ import telebot
 from googleapiclient.discovery import build
 import os
 import time
+from fuzzywuzzy import fuzz
 
 # === Настройки бота и API ===
 BOT_TOKEN = os.getenv("BOT_TOKEN") or "ВАШ_ТОКЕН"  # Например: '1234567890:ABCdefGHIjklmnoPQRStuv'
@@ -39,7 +40,7 @@ def get_valid_video(video_id):
         print(f"[Ошибка] Не удалось проверить видео {video_id}: {e}")
     return False
 
-# === Поиск видео на YouTube по ключевому слову ===
+# === Поиск видео на YouTube по ключевому слову с fuzzy-сравнением ===
 def search_videos(keyword):
     result = []
     next_page_token = None
@@ -60,33 +61,27 @@ def search_videos(keyword):
             title = item['snippet']['title']
             video_id = item['id']['videoId']
 
-            # Проверяем, доступно ли видео
             if not get_valid_video(video_id):
                 print(f"[Инфо] Пропущено недоступное видео: {video_id}")
                 continue
 
-            # Гибкая проверка совпадения (частичное совпадение)
             title_lower = title.lower()
-            if keyword_lower in title_lower:
-                url = f"https://youtube.com/watch?v={video_id}"
-                result.append({'title': title, 'url': url})
-            else:
-                # Альтернативный поиск: разбиваем ключевое слово и заголовок на слова 
-                keywords_set = set(keyword_lower.split())
-                title_words = set(title_lower.split())
+            match_score = fuzz.partial_ratio(keyword_lower, title_lower)
 
-                # Если есть хотя бы одно совпадающее слово — принимаем
-                if keywords_set & title_words:
-                    url = f"https://youtube.com/watch?v={video_id}"
-                    result.append({'title': title, 'url': url})
+            if match_score > 60:  # можно менять порог от 0 до 100
+                url = f"https://youtube.com/watch?v={video_id}"
+                result.append({'title': title, 'url': url, 'score': match_score})
 
         next_page_token = response.get('nextPageToken')
         if not next_page_token:
             break
 
-    return result
+    # Сортируем по релевантности 
+    result.sort(key=lambda x: x['score'], reverse=True)
+    # Возвращаем только нужные поля
+    return [{'title': item['title'], 'url': item['url']} for item in result[:20]]
 
-# === Обработка текстовых сообщений ТОЛЬКО в ЛС === 
+# === Обработка текстовых сообщений ТОЛЬКО в ЛС ===  
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
     if message.chat.type == 'private':
