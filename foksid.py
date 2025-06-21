@@ -63,7 +63,7 @@ def search_videos(keyword):
             title_lower = title.lower()
             match_score = fuzz.partial_ratio(keyword_lower, title_lower)
 
-            if match_score > 30:  # можно менять порог от 0 до 100
+            if match_score > 45:  # можно менять порог от 0 до 100
                 url = f"https://youtube.com/watch?v={video_id}"
                 result.append({'title': title, 'url': url, 'score': match_score})
 
