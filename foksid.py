@@ -5,24 +5,19 @@ import time
 from fuzzywuzzy import fuzz
 
 # === Настройки бота и API ===
-BOT_TOKEN = os.getenv("BOT_TOKEN") or "ВАШ_ТОКЕН"  # Например: '1234567890:ABCdefGHIjklmnoPQRStuv'
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY") or "ВАШ_YOUTUBE_API_KEY"
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 YOUTUBE_CHANNEL_ID = "UCGS02-NLVxwYHwqUx7IFr3g"  # ID твоего YouTube-канала
-TELEGRAM_CHANNEL_ID = -1001234567890              # ID основного Telegram-канала
-DISCUSSION_CHAT_ID = -1002880107017               # ID группы обсуждений (публичной!)
 
 # === Инициализация бота и YouTube API ===
 bot = telebot.TeleBot(BOT_TOKEN)
 youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
 
-# === Сообщение под каждым постом канала ===
-WELCOME_MESSAGE = "Привет! Ознакомьтесь с правилами канала: https://t.me/yourrules" 
-
 # === Команда /start и /help ===
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     if message.chat.type == 'private':
-        bot.reply_to(message, "Привет! Напишите ключевое слово для поиска видео на моем YouTube-канале.")
+        bot.reply_to(message, "Привет! Напишите ключевое слово или целый запрос для поиска видео на моем YouTube-канале.")
 
 # === Проверка доступности видео ===
 def get_valid_video(video_id):
@@ -46,13 +41,13 @@ def search_videos(keyword):
     next_page_token = None
     keyword_lower = keyword.strip().lower()
 
-    while len(result) < 20:  # максимум 20 результатов
+    while len(result) < 50:  # максимум 20 результатов
         request = youtube.search().list(
             part='snippet',
             channelId=YOUTUBE_CHANNEL_ID,
             q=keyword,
             type='video',
-            maxResults=20,
+            maxResults=50,
             pageToken=next_page_token
         )
         response = request.execute()
@@ -68,7 +63,7 @@ def search_videos(keyword):
             title_lower = title.lower()
             match_score = fuzz.partial_ratio(keyword_lower, title_lower)
 
-            if match_score > 60:  # можно менять порог от 0 до 100
+            if match_score > 30:  # можно менять порог от 0 до 100
                 url = f"https://youtube.com/watch?v={video_id}"
                 result.append({'title': title, 'url': url, 'score': match_score})
 
@@ -99,30 +94,7 @@ def handle_text(message):
             for video in videos:
                 bot.send_message(message.chat.id, f"{video['title']}\n{video['url']}")
         else:
-            bot.send_message(message.chat.id, f"Видео по запросу \"{text}\" не найдены.")
-
-# === Обработчик новых постов в Telegram-канале (только оригинальные) ===
-@bot.channel_post_handler(func=lambda post: post.chat.id == TELEGRAM_CHANNEL_ID)
-def handle_new_channel_post(channel_post):
-    try:
-        # Убедимся, что это оригинальный пост, а не репост или медиагруппа
-        if hasattr(channel_post, 'forward_from') or hasattr(channel_post, 'forward_from_chat'):
-            return
-
-        post_id = channel_post.message_id
-        print(f"[Инфо] Новый пост в канале, ID: {post_id}")
-
-        # Отправляем сообщение в группу обсуждений как ответ на пост
-        bot.send_message(
-            chat_id=DISCUSSION_CHAT_ID,
-            text=WELCOME_MESSAGE,
-            reply_to_message_id=post_id
-        )
-
-        print(f"[Успех] Сообщение отправлено как комментарий к посту {post_id}")
-
-    except Exception as e:
-        print(f"[Ошибка] Не удалось обработать пост: {e}")
+            bot.send_message(message.chat.id, f"Видео по запросу \"{text}\" не найдены, попробуйте перефразировать запрос.")
 
 # === Перезапуск бота при ошибках ===
 if __name__ == "__main__":
