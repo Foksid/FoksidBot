@@ -8,3 +8,4 @@
 *.txt     text=crlf
 *.vs      text=crlf linguist-language=HLSL
 *.xml     text=crlf linguist-language=XML
+* text=auto
