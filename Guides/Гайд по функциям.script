@@ -1,0 +1,260 @@
+-- -*- mode: lua; coding: windows-1251-dos -*-
+
+﻿ДЛЯ РАБОТЫ БОЛЬШИНСТВА ФУНКЦИЙ НУЖЕН sak.script из СБОРНИКА, поэтому кидаем его в свою папку gamedata\scripts\
+--------------------------------------------------------------------------------------------------------------
+файлы с функциями(скрипты) создаются своими руками в папке gamedata\scripts и называются "имя_файла.script", нигде больше их регать не надо.
+--------------------------------------------------------------------------------------------------------------
+В диалогах функции вызываются так:
+    <phrase id="121">
+        <text>tutorial_wounded_give_medkit_121</text>
+        <action>dialogs.transfer_medkit</action>
+    </phrase>
+	
+	в инфопоршях:
+	<info_portion id="escape_stalker_meet">
+		<action>dialogs.transfer_medkit</action>
+	</info_portion>
+
+где, dialogs это dialogs.script, а transfer_medkit это функция из этого скрипта
+--------------------------------------------------------------------------------------------------------------
+Так же в диалогах можно использовать функции проверки <precondition>, для того, чтобы некоторые фразы отображались, если соблюдены условия функции 
+
+            <phrase id="2">
+                <text>tutorial_wounded_give_medkit_2</text>
+                <precondition>dialogs.actor_have_medkit</precondition>
+                <next>121</next>
+            </phrase>
+			
+В данном примере диалог не выйдет на 2 фразу, пока не будет выполнено условие из <precondition>dialogs.actor_have_medkit</precondition>
+--------------------------------------------------------------------------------------------------------------
+Прекондишны можно ставить и на сам диалог, чтобы задать условие его появления.
+
+    <dialog id="escape_trader_talk_level" priority="2">
+        <precondition>escape_dialog.trader_alredy_give_job</precondition>
+        <has_info>tutorial_end</has_info>
+        <phrase_list>
+            <phrase id="2">
+                <text>escape_trader_talk_level_2</text>
+                <next>21</next>
+            </phrase>
+			
+--------------------------------------------------------------------------------------------------------------            
+В квестах функции проверки выглядят так <function_complete>sak.prov</function_complete>
+		<objective>
+			<text>name_pod_kvest_1</text>
+			<function_complete>sak.prov</function_complete>
+		</objective>
+--------------------------------------------------------------------------------------------------------------            
+Сами функции проверки выглядят так:
+
+function название_функции()
+	if "набор условий" then
+		return true
+	end
+	return false
+end
+
+"набор условий" это нечто вроде if has_alife_info("инфопоршн1") and not has_alife_info("инфопоршн2") then  что означает, если получен "инфопоршн1" и не получен "инфопоршн2", то истина
+или if sak.have_item_namber("af_medusa",1) and sak.have_item_namber("wpn_pm",1) then что означает, если получен 1 "af_medusa" и 1 получен "wpn_pm", то истина
+--------------------------------------------------------------------------------------------------------------
+тут идет проверка на наличие и отсутствие определенных инфо, если одно из условий выполнено проверка пройдёт, а при отсутствии нет
+
+function trader_alredy_give_job()
+	if (has_alife_info("agroprom_military_case") and not has_alife_info("agroprom_military_case_done")) or
+	   (has_alife_info("escape_blockpost_case") and not has_alife_info("escape_blockpost_case_done")) or
+	   (has_alife_info("tutorial_artefact_start") and not has_alife_info("tutorial_artefact_done")) or
+	   (has_alife_info("tutorial_wounded_start") and not has_alife_info("esc_serious_talk"))
+	then
+		return true
+	end
+	return false
+end
+--------------------------------------------------------------------------------------------------------------
+Можно сделать более простую проверку на предмет af_medusa и также использовать в прекондишене
+--------------------------------------------------------------------------------------------------------------
+function prov() 
+	return sak.have_item_namber("af_medusa",1) ~= false
+end
+--------------------------------------------------------------------------------------------------------------
+Можно сделать проверку, если есть инфо "storyline_actor_start" и нет инфо "when_out_kordon", то будет выдан инфо "infoportion_xxx"
+function prov_info2()
+	if has_alife_info("storyline_actor_start") and not has_alife_info("when_out_kordon") then
+		db.actor:give_info_portion("infoportion_xxx")
+	end 
+end
+--------------------------------------------------------------------------------------------------------------
+ВЫПОЛНЕНИЕ ФУНКЦИИ ПРИ ПОПАДАНИИ ПРЕДМЕТА В ИНВЕНТАРЬ(в данном случае при подборе с земли аптечки на будут выданы предметы, ниже привел пример для ваших проверок)
+
+в \gamedata\scripts\bind_stalker.script
+в function actor_binder:on_item_take (obj)
+добавляем строку
+sak.take_item(obj)
+
+в вашем файле sak.script
+
+function take_item(obj)
+local obj_sect = obj:section()
+
+	if obj_sect == "medkit" then
+		sak.create_items_actor("bandage",5)	
+	end
+	-- if obj_sect == "ваш_предмет" then
+		--ваше действие
+	-- end
+end
+--------------------------------------------------------------------------------------------------------------
+ВЫПОЛНЕНИЕ ФУНКЦИИ ПРИ ИСПОЛЬЗОВАНИИ ПРЕДМЕТА В ИНВЕНТАРЕ()
+1.В ФАЙЛЕ "bind_stalker.script" в функции 
+function actor_binder:net_destroy() 
+
+после self.object:set_callback(callback.take_item_from_box, nil)
+вставляем  self.object:set_callback(callback.use_object, nil)
+
+далее в 
+function actor_binder:reinit()
+после self.object:set_callback(callback.take_item_from_box, self.take_item_from_box, self)
+вставляем self.object:set_callback(callback.use_object, self.use_object, self)
+
+между функциями вставляем 
+function actor_binder:use_object(obj)
+	sak.use_item(obj)
+end
+
+в вашем файле sak.script
+
+function use_item(obj)
+local obj_sect = obj:section()
+
+	if obj_sect == "medkit" then
+		dialogs.relocate_item_section(second_speaker, "wpn_bm16", "in")	
+	end
+	-- if obj_sect == "ваш_предмет" then
+		--ваше действие
+	-- end
+end
+--------------------------------------------------------------------------------------------------------------
+
+
+
+--------------------------------------------------------------------------------------------------------------
+Также функции можно вызывать через логику
+--------------------------------------------------------------------------------------------------------------
+
+Вызов функции:
+%=название_функции%
+
+Проверка функции:
+{=название_функции}
+
+Пример:
+
+[logic]
+active = sr_idle1
+
+[sr_idle1]
+on_timer = 10000 | %=название_функции% sr_idle
+
+Функции проверки должны лежать в \gamedata\scripts\xr_conditions.script
+
+Функции типа %=% должны лежать в \gamedata\scripts\xr_effects.script
+
+
+
+--------------------------------------------------------------------------------------------------------------
+ДЛЯ БЫСТРОГО ТЕСТА ФУНКЦИЙ ИСПОЛЬЗУЕМ bind_stalker.script
+--------------------------------------------------------------------------------------------------------------
+находим if self.bCheckStart then
+и строкой ниже printf("SET DEFAULT INFOS")
+вставляем например выдачу инфо  db.actor:give_info_portion("tutorial_artefact_start")
+Это будет работать при начале новой игры, после каждой перезагрузки уровня\перехода на локацию.
+--------------------------------------------------------------------------------------------------------------
+Чтобы сделать запуск функции один раз при начале игры нужно вставить её в if not has_alife_info("global_dialogs") then чтобы получилось так
+if not has_alife_info("global_dialogs") then
+	db.actor:give_info_portion("tutorial_artefact_start") -- ваше действие
+	self.object:give_info_portion("global_dialogs")
+end
+--------------------------------------------------------------------------------------------------------------
+ПОСТАВИТЬ Функции НА ПОСТОЯННУЮ ПРОВЕРКУ МОЖНО ЧЕРЕЗ:
+--------------------------------------------------------------------------------------------------------------
+В function proceed() в файле \gamedata\scripts\escape_tasks.script
+там запущена постоянная проверка на соблюдение условий, полезно, когда нужно чтобы условие проверялось вне квеств и диалога.
+Начало файла: 
+function proceed()
+ вставляем
+	if	not has_alife_info("tutorial_artefact_start") and sak.have_item_namber("af_medusa",1)
+	then		
+		db.actor:give_info_portion("tutorial_artefact_start")
+	end
+
+Разбираем: проверка будет работать пока не получен инфо "tutorial_artefact_start", так как после попадания в инвентарь "af_medusa" будет выдан инфо "tutorial_artefact_start" тем самым завершит проверку.
+
+Свои проверки так же начинаем с if и заканчиваем end, оформляем по принципу:
+	if "набор условий" and not has_alife_info("инфопоршн1") then
+		-- ваше действие
+		db.actor:give_info_portion("инфопоршн1")
+	end
+
+"набор условий" это нечто вроде if has_alife_info("инфопоршн1") and not has_alife_info("инфопоршн2") then
+
+то есть, если выполнено условие и не получен инфо, то выдаем этот инфо чтобы закрыть проверку, если так не сделать, то "ваше действие" будет выполнятся бесконечно, такой проблемы лишены квесты и прекондишены в диалогах, ведь там если истина, то сразу функция выключается
+
+
+Помимо "escape_tasks.script" можно использовать и "\gamedata\scripts\bind_stalker.script"
+
+находим function actor_binder:update(delta)
+и после строки 	object_binder.update(self, delta)
+вставляем имя_вашего_файла.имя_функции()
+
+например это будет sak.script и функция main
+получилось:
+function actor_binder:update(delta)
+	object_binder.update(self, delta)
+	sak.main()
+
+функцию main оформляем как и function proceed() из файла \gamedata\scripts\escape_tasks.script
+--------------------------------------------------------------------------------------------------------------
+Способы взаимодействия с нпс и прочими объектами, для начала определим локальную переменную obj, с ней будем взаимодействовать через клиентские методы, под взаимодействием понимается примерно следующее: 
+obj:set_money( 65000 ) установить количество денег 
+obj:set_character_rank(1000) установить ранг
+Эти два метода были добавлены в ОГСР
+
+Так вот эти методы работают только  для клиентских объектов, давайте  посмотрим  как к ним обращаться:
+
+
+local obj = level_object_by_sid(3)
+
+Ищет объект со стори айди 3, работает для клиентских методов.
+Взаимодействие можно сделать такое:
+obj:set_relation(game_object.friend, db.actor)
+
+
+local sobj = alife():story_object(2000)
+
+это тоже поиск по стори айди, но работает для серверных методов, переменную для них будем  обозначать sobj, то есть метод set_money будет приводить к вылету, вот например, рабочий метод, чтобы увести нпс в оффлайн:
+alife():set_switch_online(sobj.id, false)
+alife():set_switch_offline(sobj.id, true)
+
+
+local sobj = alife():object("escape_trader") -- Серверный объект
+local obj = level.object_by_id(sobj.id) -- Клиентский объект
+
+Это уже поиск  по айди, работает для клиентских методов, ищет через серверный
+К примеру метод set_relation тоже будет работать, а вот рабочий метод убить нпс
+obj:kill(esc_wolf)
+
+
+local sobj = alife():object("esc_wolf")
+
+Тоже поиск по айди, но для серверных методов, можно попробовать перевести объект из оффлайна в онлайн:
+alife():set_switch_online(sobj.id, true)
+alife():set_switch_offline(sobj.id, false)
+
+А ещё есть перебор всех объектов в игре для поиска заданного, если по какой-то причине  способы выше не работают, с ним работают и серверные и клиентские методы
+function perebor()
+	for a=1,65635,1 do
+	local obj=level.object_by_id(a)
+		if obj and string.find(obj:name(),"esc_wolf") then
+		-- действие
+		end
+	end
+end
